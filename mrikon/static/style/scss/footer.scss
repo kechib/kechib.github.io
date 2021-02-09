@@ -1,0 +1,20 @@
+.footer {
+	padding: 20px 0;
+    position: relative;
+    background: $px-dark;
+    .nav {
+    	a {
+		    color: $px-white;
+		    font-size: 14px;
+		    margin-right: 17px;
+		    &:hover {
+		    	color: $px-theme;
+		    }
+    	}
+    }
+    p {
+    	color: $px-white;
+		font-size: 12px;
+		margin: 0;
+    }
+}

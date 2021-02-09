@@ -1,0 +1,267 @@
+/*	Toggle Menu
+-------------------------*/
+.navbar-toggler,
+.toggler-menu {
+	width: 40px;
+    height: 40px;
+    position: relative;
+    margin: 0;
+    border-radius: 0;
+    padding: 0;
+    margin-left: 15px;
+	background: transparent;
+	border: none;
+	outline: none;
+	span {
+		position: absolute;
+	    top: 0;
+	    left: 0;
+	    bottom: 0;
+	    right: 0;
+	    width: 25px;
+	    height: 2px;
+	    margin: auto;
+	    box-shadow: 0px -8px 0 0px currentColor, 0px 8px 0 0px currentColor;
+		background: $px-dark;
+		color: $px-dark;
+	}
+}
+
+.mob-header {
+	position: fixed;
+	top: 0;
+	right: 0;
+	z-index: 3;
+	left: 0;
+	padding: 6px 10px;
+	&.fixed-header {
+		background: $px-white;
+		box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 4px;
+	}
+	@include up-lg {
+		padding: 30px 40px;
+		@include transition(ease all 0.35s);
+		&.fixed-header {
+			padding: 15px 40px;	
+		}
+		&.mh-desk {
+			display: none;
+		}
+	}
+	.toggler-menu {
+		margin-left: auto;
+	}
+	.navbar-brand {
+		font-size: 30px;
+	    padding: 0 15px;
+	    @include down-md {
+	    	padding: 0;
+	    }
+		a {
+			color: $px-theme;
+			font-weight: 700;
+		}
+	}
+	&.dark {
+		.navbar-brand {
+			a {
+				color: $px-white;
+			}
+		}
+		.toggler-menu {
+			span {
+				background: $px-white;
+				color: $px-white;
+			}
+		}
+		&.fixed-header {
+			.navbar-brand {
+				a {
+					color: $px-dark;
+				}
+			}
+			.toggler-menu {
+				span {
+					background: $px-dark;
+					color: $px-dark;
+				}
+			}	
+		}
+	}
+	
+}
+
+
+/* Side Menu
+-----------------------------*/
+.header-left {
+    position: fixed;
+    top: 0;
+    width: 400px;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: 0;
+    bottom: 0;
+    box-shadow: 0px 3px 10px 0px rgba(0, 0, 0, 0.29);
+    z-index: 3;
+	@include transition(ease all 0.35s);
+	right: -450px;
+    background: $px-dark;
+	&.menu-open {
+		right: 0;
+	}
+    @include up-lg {
+    	&.hl-desk {
+    		right: 0;
+    	}
+    }
+    .hl-top {
+	    text-align: center;
+	    padding-bottom: 45px;
+	    padding-top: 45px;
+    	.hl-logo {
+		    text-align: center;	    
+		    font-size: 32px;
+		    line-height: 30px;
+		    color: $px-white;
+		    display: inline-block;
+		    font-weight: 600;
+		    text-transform: uppercase;
+		    a {
+		    	color: $px-white;
+		    	text-decoration: none;
+		    }
+		    span {
+		    	display: block;
+		    	color: rgba($px-white, 0.7);
+		    	font-size: 16px;
+		    	letter-spacing: 2px;
+		    }
+    	}
+    }
+    .close-icon {
+    	text-align: right;
+    	position: absolute;
+    	right: 20px;
+    	top: 20px;
+    	z-index: 11;
+    	.hl_menu_close {
+    		width: 40px;
+    		height: 40px;
+    		border: none;
+    		box-shadow: none;
+    		outline: none;
+    		position: relative;
+    		background: transparent;
+    		cursor: pointer;
+    		@include scale(0.9);
+    		@include transition(ease all 0.35s); 
+    		span {
+    			width: 25px;
+    			height: 25px;
+    			position: absolute;
+    			top: 0;
+    			left: 0;
+    			right: 0;
+    			bottom: 0;
+    			margin: auto;
+    			color: $px-white;
+    			@include rotate(45); 
+    			&:before, 
+    			&:after {
+    				content:"";
+	    			position: absolute;
+	    			top: 0;
+	    			left: 0;
+	    			right: 0;
+	    			bottom: 0;
+	    			margin: auto;
+	    			background: currentColor;
+    			}
+    			&:before {
+    				width: 22px;
+    				height: 2px;
+    			} 
+    			&:after {
+    				height: 22px;
+    				width: 2px;
+    			}
+    		}
+    		&:hover {
+    			@include scale(1.1);
+    		}
+    	}
+    }
+	.nav {
+		padding: 100px 50px 50px;
+		max-height: calc(100% - 150px);
+		overflow-y: auto;
+		@include down-sm {
+			padding: 70px 30px 30px;
+		}
+		li {
+			width: 100%;
+			padding: 15px 0;
+			@include down-sm {
+			   padding: 10px 0;
+			}
+			a {
+			    font-size: 26px;
+			    font-weight: 400;
+			    padding: 0px;
+			    display: block;
+			    position: relative;
+			    color: rgba($px-white, 0.6);
+			    position: relative;
+			    display: inline-block;
+			    @include down-sm {
+			    	font-size: 20px;
+			    }
+			    &:after {
+			    	content:"";
+			    	width: 0px;
+			    	background: $px-theme;
+			    	height: 2px;
+			    	left: auto;
+			    	bottom: 0;
+			    	right: 0;
+			    	position: absolute;
+			    	@include transition(ease all 0.35s);
+			    }
+			    &.active,
+			    &:hover {
+			    	color: $px-white;
+			    	&:after {
+				    	width: 100%;
+				    	left: 0;
+				    	right: auto;
+			    	}
+			    }
+			}		
+		}
+	}
+	.header-contact {
+		padding: 20px 50px 50px;
+		margin-top: auto;
+		@include down-sm {
+			padding: 20px 30px 50px;
+		}
+		label {
+			font-size: 18px;
+			color: rgba($px-white, 0.8);
+			font-weight: 200;
+			width: 100%;
+			@include down-sm {
+				font-size: 16px;
+			}
+		}
+		a {
+			font-size: 25px;
+			font-weight: 600;
+			color: $px-white;
+			@include down-sm {
+				font-size: 20px;
+			}
+		}
+	}
+}
