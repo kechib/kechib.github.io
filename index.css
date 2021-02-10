@@ -6,7 +6,7 @@
 #c29ca7;
   --secondary: #961950;
 }
-
+* { color:#fff; text-decoration: none;}
 /* reset */
 body,
 p,
@@ -26,6 +26,9 @@ body {
   background-color: var(--secondary);
   font-family: "Rubik", sans-serif;
   overflow-x: hidden;
+  text-align: center;
+  color:#fff;
+  padding-top:10em;
 }
 .button {
   background: none;
