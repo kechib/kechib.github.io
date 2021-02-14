@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Rubik&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@1,400;1,700&display=swap');
 
 /* variables */
 :root {
@@ -24,7 +24,7 @@ li {
 /* base styles */
 body {
   background-color: var(--secondary);
-  font-family: "Rubik", sans-serif;
+  font-family: 'Lato', sans-serif;
   overflow-x: hidden;
   text-align: center;
   color:#fff;
@@ -204,25 +204,81 @@ h4 {
 /* 6- footer section */
 footer {
   padding: 30px 20px;
-  background-color: #14153d;
-  background-image: url(https://image.flaticon.com/icons/svg/190/190282.svg);
-  background-size: 15%;
+  background-color: #54c0b2;
+  background-image: url('https://i.pinimg.com/originals/e4/be/29/e4be29734d0077c9149d996f5eb404d5.png');
+  background-size: 50%;
   background-repeat: no-repeat;
-  background-position: bottom center;
+  background-position:  center;
 }
-footer .copyright {
+/* footer .copyright {
   grid-column: 1/3;
   font-size: 0.8em;
-}
+} */
 footer .social {
   grid-column: 7/9;
   display: flex;
-  justify-content: flex-end;
+  /* justify-content: flex-end; */
+  .social {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* .social li {
+    list-style: none;
+    margin: 0 15px;
+    padding: 50px;
+  }
+
+  .social li a {
+    position: relative;
+    display: block;
+    width: 60px;
+    height: 60px;
+    text-align: center;
+    line-height: 63px;
+    background: #333;
+    border-radius: 50%;
+    font-size: 30px;
+    color: #666;
+    transition: .5s;
+  } */
+
+
+
+}
+.social li a::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  /* background: #ffee10; */
+  transition: .5s;
+  transform: scale(.9);
+  z-index: -1;
+}
+
+.social li a:hover::before {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px #ffee10;
+}
+
+.social li a:hover {
+  color: #ffee10;
+  box-shadow: 0 0 5px #ffee10;
+  text-shadow: 0 0 5px #ffee10;
 }
 footer li {
   margin: 0 6px;
 }
-footer img {
+footer a {
   width: 20px;
 }
 
@@ -257,6 +313,15 @@ footer img {
     text-align: center;
   }
 
+.project1:hover {
+  opacity: 0.7;
+}
+.project2:hover {
+  opacity: 0.7;
+}
+.project3:hover {
+  opacity: 0.7;
+}
   #skills {
     padding: 30px 100px;
   }
@@ -387,4 +452,19 @@ footer img {
 }
 .project3:hover {
   transform: scale(2.5);
+}
+.nerdy-pen {
+	 display: flex;
+	 flex-direction: column;
+	 justify-content: center;
+	 align-content: center;
+	 height: 100vh;
+}
+ .nerdy-pen__text {
+	 color:
+#25217a;
+	 /* font-family: 'Roboto', sans-serif; */
+	 padding: 1em 2em;
+	 text-align: center;
+	 font-size: 40px;
 }
