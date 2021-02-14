@@ -6,7 +6,8 @@
 #c29ca7;
   --secondary: #961950;
 }
-* { color:#fff; text-decoration: none;}
+* { color:#fff; text-decoration: none;
+font-size: 30px;}
 /* reset */
 body,
 p,
@@ -125,7 +126,6 @@ h4 {
 /* 3- portfolio section */
 #portfolio {
   background: #34a2f2;
-    bottom/cover no-repeat;
   padding: 30px 20px;
 }
 #portfolio h3 {
@@ -143,7 +143,7 @@ h4 {
   align-self: center;
 }
 .projects h4 {
-  color: #9994f7;
+  color: #fff618;
 }
 
 /* 4- skills section */
@@ -180,6 +180,9 @@ h4 {
 #contact {
   padding: 30px 20px;
   background: #080936;
+  background-image: url('https://media.giphy.com/media/8Bl36cCE2p6wxE1MQj/giphy.gif');
+  background-repeat: no-repeat;
+  background-position: center;
 }
 #contact h3,
 #contact p {
@@ -205,7 +208,7 @@ h4 {
 footer {
   padding: 30px 20px;
   background-color: #54c0b2;
-  background-image: url('https://i.pinimg.com/originals/e4/be/29/e4be29734d0077c9149d996f5eb404d5.png');
+  background-image: url('https://media.giphy.com/media/UQfw1nVKibzRqmtqm4/giphy.gif');
   background-size: 50%;
   background-repeat: no-repeat;
   background-position:  center;
@@ -313,11 +316,15 @@ footer a {
     text-align: center;
   }
 
-.project1:hover {
+.project1:hover .project1:focus {
   opacity: 0.7;
+  width: 192px;
+  height: 136px;
 }
-.project2:hover {
+.project2:hover .project2:focus {
   opacity: 0.7;
+  width: 192px;
+  height: 136px;
 }
 .project3:hover {
   opacity: 0.7;
@@ -388,13 +395,28 @@ footer a {
   #skills {
     padding: 30px 20px;
   }
+
   #skills ul {
     margin: 40px auto;
   }
   #skills li {
     grid-column: span 2;
+    position: relative;
   }
+.details {
+  text-align: center;
 
+  	cursor: pointer;
+    display: none;
+  	/* perspective: 500px; */
+}
+#select:hover .details {
+  position: absolute;
+  text-align: center;
+  display: block;
+  color: white;
+  font-size: 12px;
+}
   footer {
     padding: 60px 20px;
   }
@@ -444,6 +466,10 @@ footer a {
   border: 12px solid #961950;
   border-radius: 50%;
 }
+img.project1, img.project2, img.project3 {
+  height: 40%;
+  width: 80%;
+}
 .project1:hover {
   transform: scale(2.5);
 }
@@ -463,8 +489,12 @@ footer a {
  .nerdy-pen__text {
 	 color:
 #25217a;
+font-style: italic;
 	 /* font-family: 'Roboto', sans-serif; */
-	 padding: 1em 2em;
+	 /* padding: 1em 2em; */
 	 text-align: center;
 	 font-size: 40px;
+}
+span.wrap {
+  font-size: 60px;
 }
