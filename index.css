@@ -127,6 +127,7 @@ h4 {
 #portfolio {
   background:url(https://www.photohdx.com/images/2017/04/clean-dark-purple-background-texture.jpg);
   padding: 30px 20px;
+  background-size: cover;
 }
 #portfolio h3 {
   text-align: center;
@@ -157,6 +158,7 @@ h4 {
 #skills h3 {
   text-align: center;
 }
+
 #skills ul {
   margin: 40px 0;
 }
@@ -166,12 +168,21 @@ h4 {
   grid-column: span 4;
   text-align: center;
 }
-#skills li:hover {
-  transform: scale(1.2);
-  opacity: 0.6;
+#skills h4 {
+  margin-top: 80px;
 }
+
+#skills p {
+  text-align: center;
+}
+
+#skills li:hover  {
+  transform: scale(1.2);
+  opacity: 0.8;
+}
+
 #skills img {
-  height: 80px;
+  height: 100px;
   margin: 10px auto;
 }
 #skills i {
@@ -557,4 +568,12 @@ input[type="submit"] {
 input:hover {
   cursor: pointer;
   color: #da58c5;
+}
+#skills h4 {
+        margin-top: 100px;
+}
+#skills p {
+        text-align: center;
+        padding: 12px;
+        /* padding-right: 5px; */
 }
