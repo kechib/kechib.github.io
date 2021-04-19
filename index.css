@@ -124,11 +124,7 @@ h4 {
 }
 
 /* 3- portfolio section */
-#portfolio {
-  background:url(https://www.photohdx.com/images/2017/04/clean-dark-purple-background-texture.jpg);
-  padding: 30px 20px;
-  background-size: cover;
-}
+
 #portfolio h3 {
   text-align: center;
   margin-bottom: 0;
@@ -420,11 +416,11 @@ footer a {
   }
 
   #skills {
-    padding: 30px 20px;
+    padding: 50px 20px;
   }
 
   #skills ul {
-    margin: 40px auto;
+    margin: 30px auto;
   }
   #skills li {
     grid-column: span 2;
@@ -574,6 +570,11 @@ input:hover {
 }
 #skills p {
         text-align: center;
-        padding: 12px;
+        padding: 13px;
         /* padding-right: 5px; */
+}
+#portfolio {
+  background:url(https://www.photohdx.com/images/2017/04/clean-dark-purple-background-texture.jpg);
+  padding: 30px 20px;
+  background-size: cover;
 }
