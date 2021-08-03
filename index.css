@@ -405,7 +405,10 @@ footer a {
     grid-column: 6/8;
   }
   .projects a:nth-child(4) {
-    grid-column: 1/8;
+    grid-column: 2/4;
+  }
+  .projects a:nth-child(5) {
+    grid-column: 6/8;
   }
   /* .projects a:nth-child(5) {
     grid-column: 2/4;
@@ -513,6 +516,9 @@ footer a {
   transform: scale(1.7);
 }
 .project5:hover {
+  transform: scale(1.7);
+}
+.project6:hover {
   transform: scale(1.7);
 }
 .nerdy-pen {
