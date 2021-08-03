@@ -405,7 +405,7 @@ footer a {
     grid-column: 6/8;
   }
   .projects a:nth-child(4) {
-    grid-column: 2/4;
+    grid-column: 1/4;
   }
   .projects a:nth-child(5) {
     grid-column: 6/8;
@@ -502,6 +502,9 @@ footer a {
  img.project3 img.project4 {
   height: 40%;
   width: 80%;
+}
+img.project4 {
+        height: 150px;
 }
  .project1:hover {
   transform: scale(1.7);
