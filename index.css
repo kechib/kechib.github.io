@@ -110,7 +110,7 @@ h4 {
 #welcome {
   padding: 0 20px 20px 20px;
 }
-.welcome-text {
+/* .welcome-text {
   grid-column: 1/6;
 }
 .welcome-img {
@@ -121,7 +121,7 @@ h4 {
 }
 .welcome-text a {
   margin: 20px 0;
-}
+} */
 
 /* 3- portfolio section */
 
@@ -299,15 +299,15 @@ footer a {
 
 /* SMALL TABLET STYLES */
 @media screen and (min-width: 620px) {
-  .welcome-text {
+  /* .welcome-text {
     grid-column: 1/5;
   }
   .welcome-img {
     grid-column: 5/9;
-  }
-  .welcome-img img {
+  } */
+  /* .welcome-img img {
     width: 100%;
-  }
+  } */
 
   .projects {
     margin-top: 40px;
@@ -623,7 +623,7 @@ a, a:hover, a:focus, a:active {
    padding: 100px;
  }
 
- .image--cover {
+ /* .image--cover {
    width: 350px;
    height: 350px;
    border-radius: 50%;
@@ -631,7 +631,18 @@ a, a:hover, a:focus, a:active {
 
    object-fit: cover;
    object-position: center right;
- }
+ } */
+ @media only screen and (max-width: 600px)  {
+   /* .welcome-img img {
+        width: 200px;
+} */
+   /* .image--cover {
+     width: auto !important;
+     height: auto !important;
+     border-radius: 0% !important;
+     margin: 0 !important;
+   }
+ } */
  .fa-heart {
    color:#f32323;
  }
@@ -639,14 +650,14 @@ a, a:hover, a:focus, a:active {
  {
    letter-spacing:4px;
  }
- hr.footer-hr
+ /* hr.footer-hr
  {
    width:150px;
  }
  hr.copyright
  {
    opacity:0.4;
- }
+ } */
  svg {
         height: 150px;
         transform: translate(-84px,0px);
@@ -828,7 +839,7 @@ i:hover {
         background-color: #742464;
         border-radius: 20px;
 }
-.image--cover {
+/* .image--cover {
         width: 350px;
         height: 500px;
         border-radius: 50%;
@@ -837,4 +848,178 @@ i:hover {
         object-position: center right;
         position: relative;
         top: -125px;
+} */
+@media only screen and (max-width: 900px)  {
+  .image--cover {
+  display: none !important;
+}
+#portfolio {
+  background: url(https://www.photohdx.com/images/2017/04/clean-dark-purple-background-texture.jpg);
+  padding: 30px 30px;
+  background-size: cover;
+ 
+}
+.link-tag {
+  padding: 20px;
+}
+#skills {
+  padding: 30px 20px;
+  background-color: #742464;
+  
+}
+#contact {
+  padding: 30px 20px;
+  background: #141157;
+  background-image: url(https://media.giphy.com/media/8Bl36cCE2p6wxE1MQj/giphy.gif);
+  background-repeat: no-repeat;
+  background-position: center;
+  
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 2fr);
+  gap: 10px;
+}
+.text-container {
+  height: 100%;
+  width: 400px;
+  position: unset !important;
+  left: 510px;
+}
+.row {
+  
+  margin-top: 2rem;
+}
+
+}
+#project-img {
+  height: 150px;
+}
+img.image--cover {
+  margin-top: -4rem;
+}
+.about-text {
+
+  letter-spacing: 2px;
+  font-size: 40px;
+}
+.about-me-img {
+  height: 100%;
+  border-right-style: solid;
+  border-right-width: 5px;
+  border-right-color: #fbe3fd;
+}
+.fa-bars {
+  font-size: 25px;
+  color: #4c4c4c;
+  cursor: pointer;
+}
+i.fa.fa-lg.fa-chevron-right {
+  color: white;
+}
+i.fa.fa-lg.fa-chevron-left {
+  color: white;
+}
+.fa {
+  color: #4c4c4c;
+}
+i.fa.fa-copyright {
+  color: #fff;
+}
+i.fa.fa-heart {
+  color: red;
+}
+.menu-container {
+  position: absolute;
+  left: 40px;
+  top: 30px;
+}
+.image-container {
+  height: 100%;
+  margin-left: 100px;
+  position: absolute;
+}
+.text-container {
+  height: 100%;
+  width: 400px;
+  position: absolute;
+  left: 510px;
+}
+.nav-bar {
+  margin: auto;
+  position: absolute;
+  top: 30px;
+  left: 0;
+  right: 0;
+  height: 30px;
+  width: 300px;
+}
+.underline {
+  margin: auto;
+  position: absolute;
+  top: 60px;
+  left: 0;
+  right: -47px;
+  height: 1px;
+  width: 54px;
+  background-color: #fbe3fd;
+}
+.underline2 {
+  margin: auto;
+  position: absolute;
+  top: 309px;
+  left: 50px;
+  height: 1.2px;
+  width: 87px;
+  background-color: #fbe3fd;
+}
+.sub-title {
+  position: absolute;
+  height: 100px;
+  width: 300px;
+  top: 210px;
+  bottom: 0;
+  left: 50px;
+}
+.title-container {
+  position: absolute;
+  height: 100px;
+  width: 300px;
+  top: 170px;
+  bottom: 0;
+  left: 45px;
+}
+.fa-caret-down {
+  position: absolute;
+  margin: auto;
+  top: 4px;
+  bottom: 0;
+  text-align: center;
+  font-size: 14px;
+  width: 20px;
+  height: 20px;
+}
+
+.p-container {
+  font-size: 15px;
+  margin: auto; 
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  right: 0;
+  height: 200px;
+  width: 300px;
+}
+#me-container {
+
+  margin: auto;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #7a4f6e;
+  width: 900px;
+  height: 600px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }

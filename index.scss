@@ -151,13 +151,13 @@ h4 {
   margin: 20px 0;
 }
 
-.welcome-img {
-  grid-column: 6/9;
-}
+// .welcome-img {
+//   grid-column: 6/9;
+// }
 
-.welcome-img img {
-  width: 200%;
-}
+// .welcome-img img {
+//   width: 200%;
+// }
 
 #portfolio {
   background: #34a2f2;
@@ -317,17 +317,17 @@ footer img {
   transform: scale(2.5);
 }
 @media screen and (min-width: 620px) {
-  .welcome-text {
-    grid-column: 1/5;
-  }
+  // .welcome-text {
+  //   grid-column: 1/5;
+  // }
 
-  .welcome-img {
-    grid-column: 5/9;
-  }
+  // .welcome-img {
+  //   grid-column: 5/9;
+  // }
 
-  .welcome-img img {
-    width: 100%;
-  }
+  // .welcome-img img {
+  //   width: 100%;
+  // }
 
   .projects {
     margin-top: 40px;
@@ -495,4 +495,9 @@ footer img {
   padding: 1em 2em;
   text-align: center;
   font-size: 40px;
+}
+a {
+  img {
+    height: 150px;
+  }
 }
