@@ -896,9 +896,9 @@ i:hover {
 #project-img {
   height: 150px;
 }
-img.image--cover {
+/* img.image--cover {
   margin-top: -4rem;
-}
+} */
 .about-text {
 
   letter-spacing: 2px;
