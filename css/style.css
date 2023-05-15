@@ -2675,7 +2675,7 @@ input[type=number] {
 	.dizme_tm_process .icon .brush{max-width: 90px;}
 	.dizme_tm_process .icon .svg{width: 45px;height: 45px;}
 	.dizme_tm_about .right .title span{font-size: 22px;}
-	.dizme_tm_about .right .title h3{font-size: 40px;}
+	.dizme_tm_about .right .title h3{font-size: 30px;}
 	.dizme_tm_main_title{max-width: 550px;}
 	.dizme_tm_main_title span{font-size: 22px;}
 	.dizme_tm_main_title h3{font-size: 38px;}
@@ -2751,7 +2751,7 @@ input[type=number] {
 	.dizme_tm_about .left .image img{max-width: 300px;max-height: 300px;}
 	.dizme_tm_about .right{width: 100%;padding: 0px;}
 	.dizme_tm_about .right .title span{font-size: 20px;}
-	.dizme_tm_about .right .title h3{font-size: 35px;max-width: 100%;}
+	.dizme_tm_about .right .title h3{font-size: 28px;max-width: 100%;}
 	.dizme_tm_about .numbers{position: relative;}
 	.dizme_tm_about .numbers.year{top: auto;left: auto;margin-top: 20px;margin-bottom: 20px;}
 	.dizme_tm_about .numbers.project{bottom: auto;right: auto;margin-bottom: 30px;}
@@ -2863,3 +2863,57 @@ background: url(../img/brushes/about/522-5228881_glitter-stars-galaxy-glowing-mi
 .icons {
 	height:  30px;
 }
+.p-headline{
+	font-weight: 800;
+	  text-indent: 50px;
+}
+/* 4- skills section */
+#skills {
+  padding: 30px 20px;
+  background-color: #742464;
+}
+#skills h3 {
+  text-align: center;
+}
+
+#skills ul {
+  margin: 40px 0;
+}
+#skills li {
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  grid-column: span 4;
+  text-align: center;
+}
+#skills h4 {
+  margin-top: 80px;
+}
+
+#skills p {
+  text-align: center;
+}
+
+#skills li:hover  {
+  transform: scale(1.2);
+  opacity: 0.8;
+}
+
+#skills img {
+  height: 100px;
+  margin: 10px auto;
+}
+#skills i {
+  height: 80px;
+  margin: 10px auto;
+}
+.grid-container {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .grid-item {
+      width: 25%;
+      padding: 20px;
+      text-align: center;
+      font-size: 30px;
+    }
