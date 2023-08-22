@@ -2917,3 +2917,10 @@ background: url(../img/brushes/about/522-5228881_glitter-stars-galaxy-glowing-mi
       text-align: center;
       font-size: 30px;
     }
+
+	@media (max-width: 1040px) {
+		.image {
+			
+			display: none;
+	}
+	}
