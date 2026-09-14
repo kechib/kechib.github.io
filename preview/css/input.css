@@ -1,0 +1,34 @@
+/* ==========================================================================
+   Tailwind v4 — utilities only (Preflight intentionally omitted).
+   Existing css/style.css is the base layer and design system.
+   Palette is mapped here so utilities share the exact tokens.
+   ========================================================================== */
+
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  /* Foundation */
+  --color-cream: #F4F0E8;
+  --color-ivory: #FBF8F2;
+  --color-mist: #ECE6DC;
+  --color-plum: #4D2534;
+
+  /* Spectrum */
+  --color-aubergine: #3A183D;
+  --color-purple-plum: #59294F;
+  --color-orchid: #79456F;
+  --color-mauve: #B68BA7;
+  --color-lavender: #DED1DF;
+  --color-berry: #8D3F63;
+  --color-rose: #B85D7B;
+  --color-blush: #D98FA4;
+  --color-petal: #EDBBC6;
+  --color-powder: #F6DDE2;
+
+  /* Fonts */
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+}
