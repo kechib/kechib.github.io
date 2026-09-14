@@ -86,6 +86,65 @@
     document.dispatchEvent(new CustomEvent("motionchanged", { detail: root.getAttribute("data-motion") }));
   });
 
+  /* ---------- Hero entrance (Home) ----------
+     One-shot, finishes well inside 5s. The approved logo reveals with a
+     gentle rise, the existing arch and orbs ease into place, then a
+     restrained rose dust flourish drifts beside the artwork. Nothing
+     loops, nothing follows the cursor, and nothing runs in reduced mode —
+     the static composition is identical to the finished end state.          */
+  var heroScene = document.querySelector(".hero__logo-scene");
+  if (heroScene && Motion && Motion.animate) {
+    var heroLogo = heroScene.querySelector(".hero__logo");
+    var heroArch = document.querySelector(".hero__art .arch");
+    var heroOrbs = Array.prototype.slice.call(document.querySelectorAll(".hero__art .orb"));
+    var heroDust = Array.prototype.slice.call(heroScene.querySelectorAll(".hero__dust"));
+    var heroControls = [];
+
+    function heroMotionStop() {
+      heroControls.forEach(function (c) {
+        try { c.complete(); } catch (err) { try { c.stop(); } catch (err2) {} }
+      });
+      heroControls = [];
+      heroDust.forEach(function (p) { p.style.opacity = 0; });
+    }
+
+    function heroMotionPlay() {
+      heroMotionStop();
+      if (!shouldAnimate()) return;
+      if (heroLogo) {
+        heroControls.push(Motion.animate(
+          heroLogo, { opacity: [0, 1], y: [16, 0] },
+          { duration: 0.7, delay: 0.05, ease: "easeOut" }
+        ));
+      }
+      heroOrbs.forEach(function (orb, i) {
+        var target = orb.classList.contains("orb--orchid") ? 0.92 : 0.9;
+        heroControls.push(Motion.animate(
+          orb, { opacity: [0, target] },
+          { duration: 0.9, delay: 0.1 + i * 0.08, ease: "easeOut" }
+        ));
+      });
+      if (heroArch) {
+        heroControls.push(Motion.animate(
+          heroArch, { opacity: [0, 1], y: [12, 0] },
+          { duration: 0.9, delay: 0.2, ease: "easeOut" }
+        ));
+      }
+      heroDust.forEach(function (p, i) {
+        var drift = (i % 2 ? 7 : -7) + Math.sin((i + 1) * 2) * 4;
+        heroControls.push(Motion.animate(
+          p, { opacity: [0, 0.85, 0], y: [6, -24 - (i % 3) * 10], x: [0, drift] },
+          { duration: 1.5 + (i % 3) * 0.25, delay: 0.55 + i * 0.12, ease: "easeOut" }
+        ));
+      });
+    }
+
+    heroMotionPlay();
+    document.addEventListener("motionchanged", function (evt) {
+      if (evt.detail === "reduced") heroMotionStop();
+    });
+  }
+
   /* ---------- Founder decorative accent ----------
      Static by default and in reduced mode; in vivid it gets a one-shot
      entrance plus a slow drift, paused whenever the section is offscreen.
@@ -190,6 +249,28 @@
     panels.forEach(function (p) { if (!p.hasAttribute("hidden")) p.hidden = false; });
     selectTab(tabs[focusedIndex]);
   }
+
+  /* ---------- Accordions (shared disclosure component) ----------
+     Semantic headings containing real buttons, with accurate
+     aria-expanded/aria-controls and unique panel IDs. Collapsed panels are
+     removed from the tab order via the hidden attribute. Closed stays
+     neutral; the approved pink treatment appears only while expanded.       */
+  var disclosureToggles = Array.prototype.slice.call(document.querySelectorAll(".disclosure__toggle"));
+  disclosureToggles.forEach(function (btn) {
+    var wrap = btn.closest(".disclosure");
+    var panel = document.getElementById(btn.getAttribute("aria-controls"));
+    function render() {
+      var open = btn.getAttribute("aria-expanded") === "true";
+      if (wrap) wrap.classList.toggle("is-open", open);
+      if (panel) panel.hidden = !open;
+    }
+    btn.addEventListener("click", function () {
+      var open = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", open ? "false" : "true");
+      render();
+    });
+    render();
+  });
 
   /* ---------- Contact forms ----------
      Accessible validation with clear messaging. Forms submit to their
@@ -333,4 +414,26 @@
 
   wireForm(document.getElementById("consulting-form"));
   wireForm(document.getElementById("employment-form"));
+
+  /* ---------- Decorative zones (Home page) ----------
+     All decoration is aria-hidden and pointer-events-free (see CSS).
+     One-shot entrances run via CSS when a shape enters the viewport;
+     looping effects are paused offscreen and while the tab is hidden.
+     Reduced motion already stops everything via the CSS global override;
+     this code only toggles classes, it never starts JS-only timers.     */
+  var decoSelectors =
+    ".deco, .glitter-rain, .bubble-zone, .line-zone, .pixie, .scene";
+  var decoZones = Array.prototype.slice.call(document.querySelectorAll(decoSelectors));
+  if (decoZones.length && "IntersectionObserver" in window) {
+    var decoObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        entry.target.classList.toggle("is-inview", entry.isIntersecting);
+      });
+    }, { rootMargin: "15% 0px 15% 0px" });
+    decoZones.forEach(function (zone) { decoObserver.observe(zone); });
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    document.documentElement.classList.toggle("deco-paused", document.hidden);
+  });
 })();
