@@ -865,6 +865,14 @@ html.no-js .disclosure__body { display: block; }
 .engagement .engagement__card p { font-size: var(--text-sm); color: var(--text-soft); margin-bottom: 0; }
 
 /* -------- Experience page -------- */
+.placeholder-card {
+  background: var(--surface);
+  border: 1px dashed var(--blush);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+.placeholder-card h3 { font-size: var(--text-lg); margin: 0 0 var(--space-1); }
+.placeholder-card p { font-size: var(--text-sm); color: var(--text-soft); margin-bottom: 0; }
 .credential-list {
   display: grid;
   gap: var(--space-2);
@@ -908,6 +916,13 @@ html.no-js .disclosure__body { display: block; }
   position: absolute;
   left: 0;
   color: var(--rose);
+}
+.role .role__summary {
+  margin-top: var(--space-1);
+  margin-bottom: 0;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-soft);
 }
 
 /* -------- Founder story -------- */
@@ -1575,6 +1590,393 @@ html.deco-paused .powder-p { animation-play-state: paused !important; }
   .scene { min-height: 0; }
   .scene__svg { max-width: 150px; }
   .invite > .pixie { width: 110px; }
+}
+
+/* ==========================================================================
+   Enchanted atmosphere — creative layer (branch: design/enchanted-motion)
+   A living, magic-leaning backdrop: fine pixie dust motes that breathe and
+   rise, soft glow blobs, a light sheen sweeping across page headers, a
+   comet-like dust-trail motif on subpages, a halo breathing around the hero
+   circle, an editorial drop cap and rotating dashed ring in the founder
+   story, and a soft sheen sweeping the assessment artwork.
+   Strictly no star shapes — glitter, dust, glints and light only.
+   Everything is decorative: aria-hidden, non-focusable, pointer-events: none,
+   and fully gated by the motion control. Vivid runs gentle long loops that
+   pause offscreen and while the tab is hidden; reduced motion keeps the exact
+   same composition, perfectly still.                                ======== */
+
+/* ---------- Global ambient dust field (injected by main.js, behind content) ---------- */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.ambient .mote {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #F6DDE2 0%, #D98FA4 52%, rgba(184, 93, 123, 0.45) 100%);
+  opacity: 0.3;
+  will-change: transform, opacity;
+}
+html[data-motion="vivid"] .ambient .mote {
+  animation: kf-mote-float var(--mt, 14s) var(--md, 0s) ease-in-out infinite;
+}
+html[data-motion="vivid"] .ambient .mote--wander {
+  animation-name: kf-mote-wander;
+}
+@keyframes kf-mote-wander {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.18; }
+  25%      { transform: translate3d(calc(var(--sway, 6px) * 1.6), -10px, 0) scale(1.05); opacity: 0.6; }
+  50%      { transform: translate3d(calc(var(--sway, 6px) * -1.1), -22px, 0) scale(1.12); opacity: 0.9; }
+  75%      { transform: translate3d(calc(var(--sway, 6px) * 0.6), -8px, 0) scale(1.02); opacity: 0.5; }
+}
+.ambient__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(12px);
+  pointer-events: none;
+  background: radial-gradient(circle at 40% 40%, rgba(237, 187, 198, 0.5), rgba(237, 187, 198, 0) 70%);
+  opacity: 0.5;
+}
+html[data-motion="vivid"] .ambient__glow {
+  animation: kf-glob-breathe var(--gl, 16s) ease-in-out infinite;
+}
+@keyframes kf-mote-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.15; }
+  30%      { opacity: 0.5; }
+  50%      { transform: translate3d(var(--sway, 6px), -16px, 0) scale(1.1); opacity: 0.85; }
+  70%      { opacity: 0.4; }
+}
+@keyframes kf-glob-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.45; }
+  50%      { transform: scale(1.12); opacity: 0.7; }
+}
+
+/* ---------- Page header: light sheen + corner dust-trail motif ---------- */
+.page-head { position: relative; overflow: clip; }
+.page-head::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 28%, rgba(246, 221, 226, 0.28) 46%, rgba(251, 248, 242, 0.6) 50%, rgba(246, 221, 226, 0.28) 54%, transparent 72%);
+  background-size: 260% 100%;
+  opacity: 0;
+}
+html[data-motion="vivid"] .page-head::after { animation: kf-sheen 9s ease-in-out infinite; }
+@keyframes kf-sheen {
+  0%        { background-position: 130% 0; opacity: 0; }
+  7%        { opacity: 1; }
+  48%       { background-position: -130% 0; }
+  60%, 100% { opacity: 0; }
+}
+
+.head-motif {
+  position: absolute;
+  right: clamp(1rem, 4vw, 3rem);
+  bottom: var(--space-3);
+  width: clamp(130px, 20vw, 230px);
+  pointer-events: none;
+  z-index: 0;
+}
+.head-motif__svg { width: 100%; height: auto; display: block; }
+@media (max-width: 640px) {
+  .head-motif { display: none; }
+}
+html[data-motion="vivid"] .head-motif.fx-decor.is-inview {
+  animation: kf-deco-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html[data-motion="vivid"] .head-motif.fx-decor.is-inview .gm-dot {
+  animation: kf-glimt 3.6s var(--gd, 0s) ease-in-out infinite;
+}
+
+/* ---------- Shared sparkle glint (no stars — soft round light motes) ---------- */
+@keyframes kf-glimt {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50%      { opacity: 0.9; transform: scale(1.15); }
+}
+
+/* ---------- Hero: breathing halo around the centered logo + glints ---------- */
+html[data-motion="vivid"] .hero__logo-circle {
+  animation: kf-halo-breathe 7.5s ease-in-out infinite;
+}
+@keyframes kf-halo-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(184, 93, 123, 0); }
+  50%      { box-shadow: 0 0 36px 6px rgba(184, 93, 123, 0.3); }
+}
+.hero__glint {
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #FBF8F2 0%, #F6DDE2 40%, #D98FA4 100%);
+  opacity: 0;
+  pointer-events: none;
+}
+html[data-motion="vivid"] .hero__glint {
+  animation: kf-glimt 3.4s var(--gd, 0s) ease-in-out infinite;
+}
+
+/* ---------- Founder story: editorial captivation ---------- */
+.founder-story > p:first-of-type::first-letter {
+  font-family: var(--font-display);
+  font-size: 3.4em;
+  line-height: 0.82;
+  float: left;
+  padding-right: 0.35em;
+  padding-top: 0.08em;
+  color: var(--berry);
+  font-weight: 600;
+}
+.founder-card__photo::before {
+  content: "";
+  position: absolute;
+  inset: -0.95rem;
+  border: 1.5px dashed rgba(141, 63, 99, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+}
+html[data-motion="vivid"] .founder-card__photo.is-inview::before {
+  animation: kf-spin 46s linear infinite;
+  transform-origin: center;
+}
+.founder-separator {
+  display: grid;
+  place-items: center;
+  margin: 0 0 var(--space-3);
+  pointer-events: none;
+}
+.founder-separator svg { width: min(200px, 80%); height: auto; }
+html[data-motion="vivid"] .founder-separator.fx-decor.is-inview svg {
+  animation: kf-draw-wings 1.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes kf-draw-wings {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Assessment artwork: soft sheen sweep + hover lift ---------- */
+.work-card {
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.work-card:hover,
+.work-card:focus-within {
+  transform: translateY(-4px);
+  border-color: var(--rose);
+  box-shadow: 0 26px 52px -34px rgba(77, 37, 52, 0.5);
+}
+.work-card__visual { position: relative; overflow: clip; }
+.work-card__visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 30%, rgba(246, 221, 226, 0.5) 48%, rgba(222, 209, 223, 0.4) 52%, transparent 70%);
+  background-size: 260% 100%;
+  opacity: 0;
+}
+html[data-motion="vivid"] .work-card__visual.fx-decor.is-inview::after {
+  animation: kf-sheen 8s ease-in-out infinite;
+}
+.work-card__visual .work-sample-art { position: relative; }
+
+/* ---------- Alive details: hover color, moving art, more pixie dust -------- */
+
+.btn { position: relative; overflow: hidden; }
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(120deg, transparent 35%, rgba(251, 248, 242, 0.5) 50%, transparent 65%);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+}
+html[data-motion="vivid"] .btn:hover::after { animation: kf-btn-shine 720ms var(--ease) forwards; }
+@keyframes kf-btn-shine {
+  0%   { opacity: 0; background-position: 150% 0; }
+  22%  { opacity: 1; }
+  100% { opacity: 0; background-position: -50% 0; }
+}
+.btn--primary {
+  background-image: linear-gradient(135deg, var(--plum) 0%, var(--plum-2) 55%, var(--berry) 130%);
+}
+.btn--primary:hover { border-color: var(--berry); }
+.btn--ghost:hover { color: var(--berry); border-color: var(--rose); }
+
+.site-nav a { position: relative; transition: color 260ms var(--ease); }
+.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--rose), var(--berry));
+  transition: right 360ms var(--ease);
+}
+.site-nav a:hover::after { right: 0; }
+.site-nav a:hover { color: var(--berry); border-bottom-color: transparent; }
+
+.tabs__tab { transition: color 260ms var(--ease), border-color 260ms var(--ease); }
+.tabs__tab:not([aria-selected="true"]):hover { color: var(--berry); border-color: var(--rose); }
+
+.pathway { transition: border-color 300ms var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.pathway:hover { border-color: var(--rose); transform: translateY(-3px); box-shadow: 0 20px 40px -26px rgba(141, 63, 99, 0.5); }
+html[data-motion="reduced"] .pathway:hover { transform: none; }
+
+/* Work cards: cursor-tracking rose glow + richer hover color */
+.work-card { position: relative; transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color 300ms var(--ease); }
+.work-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms var(--ease);
+  background: radial-gradient(420px circle at var(--mx, 52%) var(--my, 44%),
+    rgba(216, 143, 164, 0.2), rgba(237, 187, 198, 0.12) 45%, transparent 72%);
+}
+.work-card:hover::before, .work-card:focus-within::before { opacity: 1; }
+.work-card:hover { border-color: var(--rose); transform: translateY(-4px); box-shadow: 0 26px 50px -26px rgba(141, 63, 99, 0.5); }
+.work-card__body { position: relative; z-index: 1; }
+.work-card__visual { position: relative; z-index: 1; }
+.work-card__body h3 { transition: color 300ms var(--ease); }
+.work-card:hover .work-card__body h3 { color: var(--berry); }
+.work-card:hover .work-card__body .tag { border-color: var(--berry); background: rgba(237, 187, 198, 0.3); }
+.work-card__visual { transition: border-color 300ms var(--ease); }
+.work-card:hover .work-card__visual { border-color: var(--rose); }
+.work-sample-art { transition: transform 700ms var(--ease); }
+html[data-motion="vivid"] .work-card:hover .work-sample-art { transform: scale(1.02) translateY(-3px); }
+html[data-motion="reduced"] .work-card__visual .work-sample-art { transition: none; }
+
+/* Moving image: gentle life inside the illustrated cards */
+.art-wave, .art-dash, .art-blink, .art-glow, .art-pulse,
+.art-mote, .art-tw, .art-glide, .art-code { animation-delay: var(--ad, 0s); }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-wave  { animation: kf-art-wave 2.6s ease-in-out infinite; }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-dash  { animation: kf-art-dash 3.2s ease-in-out infinite; }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-pulse { animation: kf-dash-flow 3.2s linear infinite; }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-blink { animation: kf-art-blink 2s steps(2, jump-none) infinite; }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-glow  { animation: kf-art-glow 3.6s ease-in-out infinite; }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-mote  { animation: kf-art-mote 4.6s ease-in-out infinite; }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-tw    { animation: kf-art-tw 2.8s ease-in-out infinite; }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-glide { animation: kf-art-glide 3.8s ease-in-out infinite; }
+html[data-motion="vivid"] .work-card__visual.is-inview .art-code  { animation: kf-art-code 3s ease-in-out infinite; }
+@keyframes kf-art-wave  { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@keyframes kf-art-dash  { 0%, 100% { stroke-dashoffset: 0; opacity: 0.85; } 50% { stroke-dashoffset: 12; opacity: 1; } }
+@keyframes kf-dash-flow { to { stroke-dashoffset: -128; } }
+@keyframes kf-art-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.25; } }
+@keyframes kf-art-glow  { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; filter: saturate(1.18); } }
+@keyframes kf-art-mote  { 0% { transform: translateY(7px); opacity: 0; } 25% { opacity: 1; } 60% { opacity: 0.9; } 100% { transform: translateY(-15px); opacity: 0; } }
+@keyframes kf-art-tw    { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@keyframes kf-art-glide { 0%, 100% { transform: translateX(0); opacity: 0.9; } 50% { transform: translateX(9px); opacity: 1; } }
+@keyframes kf-art-code  { 0%, 100% { text-shadow: 0 0 0 rgba(184, 93, 123, 0); } 50% { text-shadow: 0 0 16px rgba(184, 93, 123, 0.6); } }
+
+/* Founder photo: slow living drift inside the ring */
+html[data-motion="vivid"] .founder-card__photo.is-inview img {
+  animation: kf-kenburns 24s ease-in-out infinite alternate;
+  transform-origin: 50% 38%;
+}
+@keyframes kf-kenburns { from { transform: scale(1.02); } to { transform: scale(1.14); } }
+
+/* Hero: the logo sways lazily on the shimmering circle */
+html[data-motion="vivid"] .hero__logo { animation: kf-logo-bob 8s ease-in-out infinite; }
+@keyframes kf-logo-bob {
+  0%, 100% { transform: translateY(0) rotate(-0.4deg); }
+  50%      { transform: translateY(-6px) rotate(0.4deg); }
+}
+
+/* Cursor pixie dust: soft trailing glow + motes that rise from the pointer */
+.cursor-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.cursor-glow {
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  margin: -170px 0 0 -170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(237, 187, 198, 0.16), rgba(216, 143, 164, 0.08) 45%, transparent 70%);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.cursor-dust {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #FBF8F2 0%, #F6DDE2 45%, #D98FA4 100%);
+  box-shadow: 0 0 8px 2px rgba(216, 143, 164, 0.35);
+  will-change: transform, opacity;
+}
+html[data-motion="vivid"] .cursor-glow { animation: kf-glow-flicker 2.8s ease-in-out infinite; }
+html[data-motion="vivid"] .cursor-dust { animation: kf-dust-rise 1s ease-out forwards; }
+@keyframes kf-glow-flicker {
+  0%, 100% { opacity: 0; }
+  12%, 88% { opacity: 1; }
+  34%, 66% { opacity: 0.55; }
+}
+@keyframes kf-dust-rise {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0.9; }
+  100% { transform: translate(var(--dr, 10px), -44px) scale(0.45); opacity: 0; }
+}
+html[data-motion="reduced"] .cursor-field { display: none; }
+html[data-motion="reduced"] .btn::after { animation: none; opacity: 0; }
+html[data-motion="reduced"] .art-wave, html[data-motion="reduced"] .art-dash,
+html[data-motion="reduced"] .art-blink, html[data-motion="reduced"] .art-glow,
+html[data-motion="reduced"] .art-pulse, html[data-motion="reduced"] .art-mote,
+html[data-motion="reduced"] .art-tw, html[data-motion="reduced"] .art-glide,
+html[data-motion="reduced"] .art-code { animation: none; }
+html[data-motion="reduced"] .founder-card__photo img { animation: none; }
+html[data-motion="reduced"] .hero__logo { animation: none; }
+
+/* ---------- Motion gating for the enchanted layer ---------- */
+html[data-motion="reduced"] .ambient .mote { animation: none; opacity: 0.3; }
+html[data-motion="reduced"] .ambient__glow { animation: none; opacity: 0.45; }
+html[data-motion="reduced"] .page-head::after { animation: none; opacity: 0; }
+html[data-motion="reduced"] .head-motif { animation: none; opacity: 1; transform: none; }
+html[data-motion="reduced"] .head-motif .gm-dot { animation: none; opacity: 0.5; }
+html[data-motion="reduced"] .hero__logo-circle { animation: none; box-shadow: none; }
+html[data-motion="reduced"] .hero__glint { animation: none; opacity: 0; }
+html[data-motion="reduced"] .founder-card__photo::before { animation: none; }
+html[data-motion="reduced"] .founder-separator svg { animation: none; opacity: 1; transform: none; }
+html[data-motion="reduced"] .work-card__visual::after { animation: none; opacity: 0; }
+html[data-motion="reduced"] .work-card:hover,
+html[data-motion="reduced"] .work-card:focus-within { transform: none; }
+
+html.deco-paused .ambient .mote,
+html.deco-paused .ambient__glow,
+html.deco-paused .gm-dot,
+html.deco-paused .head-motif,
+html.deco-paused .founder-separator svg,
+html.deco-paused .hero__glint,
+html.deco-paused .hero__logo-circle,
+html.deco-paused .hero__logo,
+html.deco-paused .founder-card__photo img,
+html.deco-paused .founder-card__photo::before,
+html.deco-paused .cursor-glow, html.deco-paused .cursor-dust,
+html.deco-paused .work-card__visual.is-inview .art-wave,
+html.deco-paused .work-card__visual.is-inview .art-dash,
+html.deco-paused .work-card__visual.is-inview .art-blink,
+html.deco-paused .work-card__visual.is-inview .art-glow,
+html.deco-paused .work-card__visual.is-inview .art-pulse,
+html.deco-paused .work-card__visual.is-inview .art-mote,
+html.deco-paused .work-card__visual.is-inview .art-tw,
+html.deco-paused .work-card__visual.is-inview .art-glide,
+html.deco-paused .work-card__visual.is-inview .art-code,
+html.deco-paused .work-card__visual::after { animation-play-state: paused !important; }
+
+@media print {
+  .ambient { display: none; }
 }
 
 @media print {
