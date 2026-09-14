@@ -422,7 +422,7 @@
      Reduced motion already stops everything via the CSS global override;
      this code only toggles classes, it never starts JS-only timers.     */
   var decoSelectors =
-    ".deco, .glitter-rain, .bubble-zone, .line-zone, .pixie, .scene";
+    ".deco, .glitter-rain, .bubble-zone, .line-zone, .pixie, .scene, .fx-decor, .head-motif, .work-card__visual, .founder-card__photo";
   var decoZones = Array.prototype.slice.call(document.querySelectorAll(decoSelectors));
   if (decoZones.length && "IntersectionObserver" in window) {
     var decoObserver = new IntersectionObserver(function (entries) {
@@ -432,6 +432,97 @@
     }, { rootMargin: "15% 0px 15% 0px" });
     decoZones.forEach(function (zone) { decoObserver.observe(zone); });
   }
+
+  /* ---------- Enchanted ambient field ----------
+     A fixed, decorative layer of fine pixie dust and soft glow behind the
+     page. Purely cosmetic. In vivid the motes float and shimmer through CSS
+     loops that pause while the tab is hidden; in reduced motion the exact
+     same static composition simply stays put. Positions use a fixed seed so
+     the look is stable across reloads. No content is ever dependent on it. */
+  function buildAmbient() {
+    var ambient = document.createElement("div");
+    ambient.className = "ambient";
+    ambient.setAttribute("aria-hidden", "true");
+    var seed = 20260913;
+    function rand() {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    }
+    var i, mote, size, dur, delay, sway;
+    for (i = 0; i < 40; i++) {
+      mote = document.createElement("i");
+      mote.className = "mote" + (i % 3 === 0 ? " mote--wander" : "");
+      size = (2.5 + rand() * 4).toFixed(1);
+      dur = (11 + rand() * 11).toFixed(1);
+      delay = (rand() * 7).toFixed(1);
+      sway = ((rand() * 2 - 1) * 12).toFixed(1);
+      mote.style.cssText =
+        "left:" + (rand() * 100).toFixed(1) + "%;" +
+        "top:" + (rand() * 100).toFixed(1) + "%;" +
+        "width:" + size + "px;height:" + size + "px;" +
+        "--mt:" + dur + "s;--md:" + delay + "s;--sway:" + sway + "px;";
+      ambient.appendChild(mote);
+    }
+    var glowA = document.createElement("i");
+    glowA.className = "ambient__glow";
+    glowA.style.cssText = "top:12%;left:6%;width:46vmin;height:46vmin;--gl:17s;";
+    var glowB = document.createElement("i");
+    glowB.className = "ambient__glow";
+    glowB.style.cssText = "bottom:6%;right:0%;width:42vmin;height:42vmin;--gl:21s;";
+    ambient.appendChild(glowA);
+    ambient.appendChild(glowB);
+    document.body.appendChild(ambient);
+  }
+  buildAmbient();
+
+  /* ---------- Cursor pixie dust ----------
+     A soft glow trails the pointer and tiny motes rise from it in vivid
+     motion on pointing devices. Whole field is aria-hidden, pointer-events
+     none, painted behind content (z-index -1 so text is never washed), and
+     entirely absent under reduced motion. */
+  function initCursorDust() {
+    var vivid = document.documentElement.getAttribute("data-motion") === "vivid";
+    if (!vivid || !window.matchMedia("(hover: hover)").matches) return;
+    var field = document.createElement("div");
+    field.className = "cursor-field";
+    field.setAttribute("aria-hidden", "true");
+    var glow = document.createElement("i");
+    glow.className = "cursor-glow";
+    field.appendChild(glow);
+    document.body.appendChild(field);
+    var lastX = -1, lastY = -1, active = 0;
+    var MAX = 14;
+    Array.prototype.forEach.call(document.querySelectorAll(".work-card"), function (card) {
+      card.addEventListener("pointermove", function (e) {
+        var r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", ((e.clientX - r.left) / r.width) * 100 + "%");
+        card.style.setProperty("--my", ((e.clientY - r.top) / r.height) * 100 + "%");
+      });
+    });
+    window.addEventListener("pointermove", function (e) {
+      if (document.documentElement.getAttribute("data-motion") !== "vivid") return;
+      var cx = e.clientX, cy = e.clientY;
+      glow.style.transform = "translate3d(" + cx + "px," + cy + "px,0)";
+      if (lastX < 0 || Math.hypot(cx - lastX, cy - lastY) > 46) {
+        lastX = cx; lastY = cy;
+        if (active >= MAX) {
+          var old = field.querySelector(".cursor-dust");
+          if (old) { old.remove(); active--; }
+        }
+        var dust = document.createElement("i");
+        dust.className = "cursor-dust";
+        var s = (3 + Math.random() * 3).toFixed(1);
+        dust.style.cssText =
+          "left:" + cx + "px;top:" + cy + "px;" +
+          "width:" + s + "px;height:" + s + "px;" +
+          "--dr:" + ((Math.random() * 24 - 12)).toFixed(1) + "px;";
+        field.appendChild(dust);
+        active++;
+        dust.addEventListener("animationend", function () { dust.remove(); active--; });
+      }
+    });
+  }
+  initCursorDust();
 
   document.addEventListener("visibilitychange", function () {
     document.documentElement.classList.toggle("deco-paused", document.hidden);
