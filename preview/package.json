@@ -1,0 +1,16 @@
+{
+  "name": "ingressible-site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ingressible LLC + Kechi Boniface consulting & portfolio site. Static HTML/CSS/JS with Tailwind v4 (no preflight) and Motion for coordinated animation.",
+  "type": "module",
+  "scripts": {
+    "css:build": "tailwindcss -i css/input.css -o css/tailwind.css --minify",
+    "css:watch": "tailwindcss -i css/input.css -o css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "motion": "^12.0.0",
+    "tailwindcss": "^4.1.11"
+  }
+}
