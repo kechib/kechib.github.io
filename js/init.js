@@ -509,42 +509,208 @@ function dizme_tm_contact_form(){
 
 	"use strict";
 
-	jQuery(".contact_form #send_message").on('click', function(){
+	var form = document.getElementById("contact_form");
+	if (!form) { return; }
 
-		var name 		= jQuery(".contact_form #name").val();
-		var email 		= jQuery(".contact_form #email").val();
-		var message 	= jQuery(".contact_form #message").val();
-		var subject 	= jQuery(".contact_form #subject").val();
-		var success     = jQuery(".contact_form .returnmessage").data('success');
+	var fields = {
+		name:    { message: "Enter your name." },
+		email:   { message: "Enter a valid email address, such as name@example.com." },
+		message: { message: "Enter a message before submitting." }
+	};
+	var REQUIRED = ["name", "email", "message"];
 
-		jQuery(".contact_form .returnmessage").empty(); //To empty previous error/success message.
-		//checking for blank fields
-		if(name===''||email===''||message===''){
+	var statusRegion = document.getElementById("contact-status");
+	var summary      = document.getElementById("contact-error-summary");
+	var summaryTitle = document.getElementById("contact-error-summary-title");
+	var summaryList  = document.getElementById("contact-error-summary-list");
+	var submitBtn    = document.getElementById("send_message");
+	var submitLabel  = document.getElementById("send_message_label");
+	var SUBMIT_TEXT  = submitLabel ? submitLabel.textContent : "Submit Now";
 
-			jQuery('div.empty_notice').slideDown(500).delay(2000).slideUp(500);
+	var inFlight = false;
+
+	function isEmpty(name){
+		var el = document.getElementById(name);
+		return !el || el.value.trim() === "";
+	}
+
+	function invalidEmail(){
+		var el = document.getElementById("email");
+		if (!el || el.value.trim() === "") { return true; }
+		return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim());
+	}
+
+	function validateField(name){
+		var el = document.getElementById(name);
+		if (!el) { return true; }
+		if (name === "email") {
+			if (invalidEmail()) {
+				markInvalid(name);
+				return false;
+			}
+			clearInvalid(name);
+			return true;
 		}
-		else{
-			// Returns successful data submission message when the entered information is stored in database.
-			jQuery.post("../modal/contact.php",{ ajax_name: name, ajax_email: email, ajax_message:message, ajax_subject: subject}, function(data) {
+		if (isEmpty(name)) {
+			markInvalid(name);
+			return false;
+		}
+		clearInvalid(name);
+		return true;
+	}
 
-				jQuery(".contact_form .returnmessage").append(data);//Append returned message to message paragraph
+	function markInvalid(name, message){
+		var el = document.getElementById(name);
+		var errorEl = document.getElementById(name + "-error");
+		if (el) {
+			el.setAttribute("aria-invalid", "true");
+			if (name === "email") { el.setAttribute("aria-describedby", "email-error"); }
+		}
+		if (errorEl) {
+			errorEl.textContent = message || fields[name].message;
+			errorEl.hidden = false;
+		}
+	}
 
+	function clearInvalid(name){
+		var el = document.getElementById(name);
+		var errorEl = document.getElementById(name + "-error");
+		if (el) {
+			el.removeAttribute("aria-invalid");
+			if (name === "email") { el.setAttribute("aria-describedby", "email-help email-error"); }
+		}
+		if (errorEl) { errorEl.hidden = true; }
+	}
 
-				if(jQuery(".contact_form .returnmessage span.contact_error").length){
-					jQuery(".contact_form .returnmessage").slideDown(500).delay(2000).slideUp(500);
-				}else{
-					jQuery(".contact_form .returnmessage").append("<span class='contact_success'>"+ success +"</span>");
-					jQuery(".contact_form .returnmessage").slideDown(500).delay(4000).slideUp(500);
-				}
+	function hideSummary(){
+		if (summary) { summary.hidden = true; }
+	}
 
-				if(data===""){
-					jQuery("#contact_form")[0].reset();//To reset form fields on success
-				}
-
+	function buildSummary(bad){
+		var i, li, link;
+		summaryList.innerHTML = "";
+		for (i = 0; i < bad.length; i++) {
+			li = document.createElement("li");
+			link = document.createElement("a");
+			link.href = "#" + bad[i];
+			link.textContent = fields[bad[i]].message;
+			link.addEventListener("click", function (ev) {
+				ev.preventDefault();
+				var target = document.getElementById(this.getAttribute("href").slice(1));
+				if (target) { target.focus(); }
 			});
+			li.appendChild(link);
+			summaryList.appendChild(li);
 		}
-		return false;
+		summaryTitle.textContent =
+			bad.length === 1 ? "There is 1 thing to fix."
+			: "There are " + bad.length + " things to fix.";
+		summary.hidden = false;
+	}
+
+	function collectErrors(){
+		var bad = [];
+		var i;
+		for (i = 0; i < REQUIRED.length; i++) {
+			if (!validateField(REQUIRED[i])) { bad.push(REQUIRED[i]); }
+		}
+		return bad;
+	}
+
+	// Only re-validate fields that are already flagged, so pristine fields
+	// stay quiet until submit. Fixing a flagged field clears it silently.
+	["name", "email", "message"].forEach(function (name) {
+		var el = document.getElementById(name);
+		if (!el) { return; }
+		el.addEventListener("blur", function () {
+			if (el.getAttribute("aria-invalid") === "true") { validateField(name); }
+		});
+		el.addEventListener("input", function () {
+			if (el.getAttribute("aria-invalid") === "true") { validateField(name); }
+		});
 	});
+
+	function restoreButton(){
+		inFlight = false;
+		if (submitBtn) {
+			submitBtn.disabled = false;
+			if (submitLabel) { submitLabel.textContent = SUBMIT_TEXT; }
+		}
+		form.removeAttribute("aria-busy");
+	}
+
+	function status(text, cssClass){
+		if (!statusRegion) { return; }
+		statusRegion.className = "returnmessage" + (cssClass ? " " + cssClass : "");
+		statusRegion.textContent = text;
+		statusRegion.focus();
+	}
+
+	form.addEventListener("submit", function (ev) {
+
+		ev.preventDefault();
+
+		if (inFlight) { return; }
+
+		hideSummary();
+
+		var bad = collectErrors();
+
+		if (bad.length) {
+			buildSummary(bad);
+			if (statusRegion) { statusRegion.textContent = ""; }
+			if (summary) { summary.focus(); }
+			return;
+		}
+
+		inFlight = true;
+		if (submitBtn) { submitBtn.disabled = true; }
+		if (submitLabel) { submitLabel.textContent = "Sending…"; }
+		form.setAttribute("aria-busy", "true");
+		status("Sending message…");
+
+		var payload = {
+			ajax_name:    document.getElementById("name").value.trim(),
+			ajax_email:   document.getElementById("email").value.trim(),
+			ajax_message: document.getElementById("message").value.trim(),
+			ajax_subject: document.getElementById("subject").value.trim()
+		};
+
+		jQuery.ajax({
+			url: "../modal/contact.php",
+			method: "POST",
+			data: payload,
+			dataType: "json",
+			timeout: 20000
+		}).done(function (res, textStatus, xhr) {
+
+			restoreButton();
+
+			if (res && res.ok) {
+status(statusRegion.dataset.success || "Thanks — your message was sent successfully.", "is-success");
+			form.reset();
+				return;
+			}
+
+			if (res && res.type === "field" && res.field && fields[res.field]) {
+				// Server-side field error (for example, this email address).
+				markInvalid(res.field, res.message || fields[res.field].message);
+				buildSummary([res.field]);
+				if (statusRegion) { statusRegion.textContent = ""; }
+				if (summary) { summary.focus(); }
+				return;
+			}
+
+			status("We couldn't send your message right now. Your entries have been kept. Try again.", "is-error");
+
+		}).fail(function () {
+
+			restoreButton();
+			status("We couldn't connect. Check your connection and try again.", "is-net");
+
+		});
+	});
+
 }
 
 // -----------------------------------------------------

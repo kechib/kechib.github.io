@@ -2929,3 +2929,151 @@ background: url(../img/brushes/about/522-5228881_glitter-stars-galaxy-glowing-mi
 		font-weight: bolder;
 
 	}
+/* ---------- Accessible contact form errors (WCAG 2.2 AA) ---------- */
+.dizme_tm_contact .fields label{
+	display: block;
+	margin-bottom: 8px;
+	color: #eceaf4;
+	font-family: 'Jost', sans-serif;
+	font-weight: 600;
+	font-size: 16px;
+}
+.dizme_tm_contact .fields .required-star{
+	color: #ff7a8a;
+	font-weight: 700;
+}
+.dizme_tm_contact .required-note{
+	margin: 0 0 16px 0;
+	color: #c9c3d6;
+	font-size: 14px;
+	font-weight: 500;
+}
+.dizme_tm_contact .field-help{
+	margin: 8px 0 0 0;
+	color: #b9b5c9;
+	font-size: 14px;
+	line-height: 1.5;
+}
+.dizme_tm_contact .field-error{
+	display: inline-block;
+	margin: 8px 0 0 0;
+	padding: 7px 12px 9px 12px;
+	border-radius: 8px;
+	background-color: #C5172B;
+	color: #ffffff;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1.5;
+}
+.dizme_tm_contact .field-error[hidden],
+.dizme_tm_contact .form-error-summary[hidden]{
+	display: none;
+}
+.dizme_tm_contact input[aria-invalid="true"],
+.dizme_tm_contact textarea[aria-invalid="true"]{
+	border-color: #ff6b7a;
+	box-shadow: inset 0 0 0 1px #ff6b7a;
+}
+.dizme_tm_contact input:focus-visible,
+.dizme_tm_contact textarea:focus-visible,
+.dizme_tm_contact .form-error-summary:focus,
+.dizme_tm_contact .form-error-summary__list a:focus-visible,
+.dizme_tm_contact .returnmessage:focus-visible{
+	outline: 3px solid #ffd166;
+	outline-offset: 2px;
+}
+.dizme_tm_contact .form-error-summary{
+	margin-bottom: 18px;
+	padding: 14px 18px;
+	border-radius: 12px;
+	background-color: #3a0d14;
+	border: 1px solid #ff6b7a;
+}
+.dizme_tm_contact .form-error-summary__title{
+	margin: 0 0 8px 0;
+	color: #ffffff;
+	font-family: 'Jost', sans-serif;
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+.dizme_tm_contact .form-error-summary__list{
+	margin: 0;
+	padding-left: 20px;
+}
+.dizme_tm_contact .form-error-summary__list li{
+	margin: 5px 0;
+	padding: 0;
+	width: 100%;
+	float: none;
+}
+.dizme_tm_contact .form-error-summary__list a{
+	color: #ffd3d9;
+	text-decoration: underline;
+	font-weight: 500;
+}
+.dizme_tm_contact .form-error-summary__list a:hover{
+	color: #ffffff;
+}
+.dizme_tm_contact .returnmessage{
+	color: #d9d4e8;
+	font-size: 15px;
+	line-height: 1.5;
+}
+.dizme_tm_contact .returnmessage.is-success{ color: #b8f7cd; }
+.dizme_tm_contact .returnmessage.is-error,
+.dizme_tm_contact .returnmessage.is-net{ color: #ffb3bd; }
+
+#contact_form .dizme_tm_button button#send_message{
+	text-decoration: none;
+	color: #ffffff;
+	display: inline-block;
+	font-family: 'Jost', sans-serif;
+	font-weight: 500;
+	border-radius: 50px;
+	border: 2px solid #EF005C;
+	padding: 14px 48px 13px 48px;
+	position: relative;
+	overflow: hidden;
+	background-color: transparent;
+	line-height: 1.2;
+	font-size: inherit;
+	cursor: pointer;
+	margin: 0;
+}
+#contact_form .dizme_tm_button button#send_message:focus-visible{
+	outline: 3px solid #ffd166;
+	outline-offset: 2px;
+}
+#contact_form .dizme_tm_button button#send_message span{
+	position: relative;
+	z-index: 2;
+	color: #ffffff;
+	transition: color .3s ease;
+}
+#contact_form .dizme_tm_button button#send_message:before{
+	position: absolute;
+	content: "";
+	z-index: 0;
+	background-color: #EF005C;
+	left: -5px;
+	right: -5px;
+	bottom: -5px;
+	height: 110%;
+	transition: height .3s ease;
+}
+#contact_form .dizme_tm_button button#send_message:hover:before{
+	height: 0;
+}
+#contact_form .dizme_tm_button button#send_message:hover span{
+	color: #000000;
+}
+#contact_form .dizme_tm_button button#send_message:disabled{
+	cursor: default;
+}
+#contact_form .dizme_tm_button button#send_message:disabled:before{
+	height: 110%;
+}
+#contact_form .dizme_tm_button button#send_message:disabled span{
+	color: #ffffff;
+}
