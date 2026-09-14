@@ -76,9 +76,47 @@
       var stopped = el.getAttribute("data-reveal") === "stop";
       if (stopped || !shouldAnimate()) return;
       Motion.inView(el, function () {
-        Motion.animate(el, { opacity: [0, 1], y: [14, 0] }, { duration: 0.6, ease: "easeOut" });
+        // Content is never hidden: sections are always fully opaque and only
+        // rise a few pixels into place so nothing waits on animation.
+        Motion.animate(el, { opacity: [1, 1], y: [12, 0] }, { duration: 0.6, ease: "easeOut" });
       });
     });
+  }
+
+  /* ---------- Card entrance animations ----------
+     Staggered rise-in for role cards and capability cards.
+     Content stays immediately readable; only the card containers animate.  */
+  if (Motion && Motion.inView) {
+    var cardGroups = Array.prototype.slice.call(document.querySelectorAll(".role-cards, .cap-grid"));
+    cardGroups.forEach(function (group) {
+      var cards = Array.prototype.slice.call(group.querySelectorAll(".role-card, .cap-card"));
+      if (!cards.length || !shouldAnimate()) return;
+      Motion.inView(group, function () {
+        cards.forEach(function (card, i) {
+          Motion.animate(card, { opacity: [0, 1], y: [18, 0] }, { duration: 0.5, delay: i * 0.1, ease: "easeOut" });
+        });
+      });
+    });
+
+    /* ---------- Flow graphic entrance ----------
+       The CSS handles line-drawing, station reveals, pulsing, and the
+       travelling dot.  JS adds is-inview to trigger those CSS animations
+       when the graphic scrolls into the viewport.  The graphic is always
+       below the fold, so a short delay after page load is sufficient;
+       IntersectionObserver and scroll listeners are unreliable inside
+       the overflow:hidden card in some environments.                   */
+    var flowGraphic = document.querySelector(".deliverable__flow");
+    if (flowGraphic) {
+      if (shouldAnimate()) {
+        setTimeout(function () { flowGraphic.classList.add("is-inview"); }, 1200);
+        Motion.inView(flowGraphic, function () {
+          flowGraphic.classList.add("is-inview");
+          Motion.animate(flowGraphic, { opacity: [0.85, 1], scale: [0.97, 1] }, { duration: 0.6, ease: "easeOut" });
+        });
+      } else {
+        flowGraphic.classList.add("is-inview");
+      }
+    }
   }
 
   // Stop decorative animation while the page is hidden, resume when visible.
@@ -94,7 +132,6 @@
      the static composition is identical to the finished end state.          */
   var heroScene = document.querySelector(".hero__logo-scene");
   if (heroScene && Motion && Motion.animate) {
-    var heroLogo = heroScene.querySelector(".hero__logo");
     var heroArch = document.querySelector(".hero__art .arch");
     var heroOrbs = Array.prototype.slice.call(document.querySelectorAll(".hero__art .orb"));
     var heroDust = Array.prototype.slice.call(heroScene.querySelectorAll(".hero__dust"));
@@ -111,12 +148,8 @@
     function heroMotionPlay() {
       heroMotionStop();
       if (!shouldAnimate()) return;
-      if (heroLogo) {
-        heroControls.push(Motion.animate(
-          heroLogo, { opacity: [0, 1], y: [16, 0] },
-          { duration: 0.7, delay: 0.05, ease: "easeOut" }
-        ));
-      }
+      // The approved logo stays still and readable at all times; only the
+      // surrounding artwork (orbs, arch, dispersed dust) receives the motion.
       heroOrbs.forEach(function (orb, i) {
         var target = orb.classList.contains("orb--orchid") ? 0.92 : 0.9;
         heroControls.push(Motion.animate(
@@ -287,10 +320,44 @@
       .replace(/"/g, "&quot;");
   }
 
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  /* Field-specific error copy. Consulting ("c-") fields use the approved
+     messages; employment ("e-") fields follow the same pattern. The email
+     format hint links to the example address so it can be copied. */
+  var FIELD_MESSAGES = {
+    "c-name": { required: "Enter your name." },
+    "c-email": {
+      required: "Enter your email address so we can reply.",
+      email: 'Enter an email address in the format <a href="mailto:name@example.com">name@example.com</a>.'
+    },
+    "c-service": { required: "Choose the service you would like to discuss." },
+    "c-message": { required: "Tell us briefly what you need help with. Include the service, product, website, app, or experience you want us to review." },
+    "e-name": { required: "Enter your name." },
+    "e-email": {
+      required: "Enter your email address so we can reply.",
+      email: 'Enter an email address in the format <a href="mailto:name@example.com">name@example.com</a>.'
+    },
+    "e-type": { required: "Choose the role type you are inquiring about." },
+    "e-focus": { required: "Choose the focus area for the role." },
+    "e-message": { required: "Tell us briefly what you need help with. Include the role, the team, and the type of work you want to discuss." }
+  };
+
   function wireForm(wrap) {
     var form = wrap && wrap.tagName === "FORM" ? wrap : (wrap ? wrap.querySelector("form") : null);
     if (!form) return;
     var fields = Array.prototype.slice.call(form.querySelectorAll("[required]"));
+    var summary = form.querySelector(".form-error-summary");
+    var summaryList = summary ? summary.querySelector("ul") : null;
+
+    function errorMessageFor(input, isEmpty) {
+      var map = FIELD_MESSAGES[input.id] || {};
+      if (isEmpty) return map.required || "This field is required.";
+      if (input.type === "email" && !EMAIL_RE.test((input.value || "").trim())) {
+        return map.email || "Enter a valid email address.";
+      }
+      return "";
+    }
 
     function setFieldState(input, errorMsg) {
       var group = input.closest(".form-group");
@@ -299,35 +366,50 @@
         input.setAttribute("aria-invalid", "true");
         input.setAttribute("aria-describedby", error ? error.id : "");
         if (error) {
-          error.textContent = errorMsg;
+          error.innerHTML = errorMsg;
           error.classList.add("is-visible");
         }
       } else {
         input.removeAttribute("aria-invalid");
-        if (error) error.classList.remove("is-visible");
+        input.removeAttribute("aria-describedby");
+        if (error) {
+          error.textContent = "";
+          error.classList.remove("is-visible");
+        }
       }
     }
 
     function validateField(input) {
-      var message = "";
-      var value = (input.value || "").trim();
-      if (!value) {
-        message = "This field is required.";
-      } else if (input.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        message = "Please enter a valid email address.";
-      }
+      var message = errorMessageFor(input, !(input.value || "").trim());
       setFieldState(input, message);
       return !message;
     }
 
+    function refreshSummary() {
+      if (!summary || !summaryList) return;
+      var invalid = fields.filter(function (f) { return f.getAttribute("aria-invalid") === "true"; });
+      summaryList.innerHTML = "";
+      invalid.forEach(function (f) {
+        var group = f.closest(".form-group");
+        var error = group ? group.querySelector(".form-error") : null;
+        var li = document.createElement("li");
+        var link = document.createElement("a");
+        link.href = "#" + f.id;
+        link.textContent = error ? error.textContent : "";
+        li.appendChild(link);
+        summaryList.appendChild(li);
+      });
+      summary.hidden = invalid.length === 0;
+    }
+
     fields.forEach(function (field) {
-      field.addEventListener("blur", function () { validateField(field); });
+      field.addEventListener("blur", function () { validateField(field); refreshSummary(); });
       field.addEventListener("input", function () {
-        if (field.getAttribute("aria-invalid") === "true") validateField(field);
+        if (field.getAttribute("aria-invalid") === "true") { validateField(field); refreshSummary(); }
       });
       var ensure = field.form.querySelector('[data-ensure-field="' + field.id + '"]');
       if (ensure) {
-        ensure.addEventListener("input", function () { validateField(field); });
+        ensure.addEventListener("input", function () { validateField(field); refreshSummary(); });
       }
     });
 
@@ -342,16 +424,18 @@
       requiredIf.forEach(function (field) {
         var dep = document.getElementById(field.getAttribute("data-required-if"));
         if (dep && dep.value) {
-          if (!(field.value || "").trim() && !firstInvalid) firstInvalid = field;
-          setFieldState(field, field.value ? "" : "This field is required once you select an option above.");
+          var required = !(field.value || "").trim();
+          if (required && !firstInvalid) firstInvalid = field;
+          setFieldState(field, required ? errorMessageFor(field, true) : "");
         } else {
           setFieldState(field, "");
         }
       });
 
+      refreshSummary();
+
       if (firstInvalid) {
-        firstInvalid.focus();
-        setStatus(form, "Some required fields are missing or need attention. Please review the highlighted fields.", "error");
+        if (summary) summary.focus();
         return;
       }
 
@@ -389,8 +473,13 @@
         if (res.ok) {
           // Success only after Formspree confirms acceptance.
           form.reset();
-          form.querySelectorAll("[aria-invalid]").forEach(function (f) { f.removeAttribute("aria-invalid"); });
+          form.querySelectorAll("[aria-invalid]").forEach(function (f) {
+            f.removeAttribute("aria-invalid");
+            f.removeAttribute("aria-describedby");
+          });
           form.querySelectorAll(".form-error.is-visible").forEach(function (e) { e.classList.remove("is-visible"); });
+          if (summary) summary.hidden = true;
+          if (summaryList) summaryList.innerHTML = "";
           form.classList.remove("is-submitting");
           if (submitButton) submitButton.disabled = false;
           setStatus(form, "Thank you — your inquiry was accepted and is on its way. We'll reply using the email address you provided.", "success");
@@ -422,7 +511,7 @@
      Reduced motion already stops everything via the CSS global override;
      this code only toggles classes, it never starts JS-only timers.     */
   var decoSelectors =
-    ".deco, .glitter-rain, .bubble-zone, .line-zone, .pixie, .scene, .fx-decor, .head-motif, .work-card__visual, .founder-card__photo";
+    ".deco, .glitter-rain, .pixie, .scene, .fx-decor, .head-motif, .work-card__visual, .founder-card__photo";
   var decoZones = Array.prototype.slice.call(document.querySelectorAll(decoSelectors));
   if (decoZones.length && "IntersectionObserver" in window) {
     var decoObserver = new IntersectionObserver(function (entries) {
