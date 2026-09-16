@@ -233,7 +233,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 .site-nav ul {
   display: flex;
-  gap: var(--space-3);
+  align-items: center;
+  gap: 1.5rem;
+}
+.site-nav li {
+  flex-shrink: 0;
 }
 .site-nav a {
   font-size: var(--text-sm);
