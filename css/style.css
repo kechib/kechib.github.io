@@ -862,6 +862,35 @@ html.no-js .disclosure__body { display: block; }
   outline-offset: 3px;
   border-radius: 2px;
 }
+.page-nav {
+  border-top: 1px solid var(--line-strong);
+  padding-top: var(--space-2);
+  margin-top: var(--space-2);
+}
+.page-nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--plum);
+  text-decoration: none;
+}
+.page-nav__link:focus-visible {
+  outline: 3px solid var(--berry);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+.page-nav__link:hover {
+  color: var(--berry);
+}
+.page-nav__link.prev {
+  margin-right: var(--space-3);
+}
+.page-nav__link.next {
+  margin-left: var(--space-3);
+}
 
 /* ==========================================================================
    Subpages — shared
@@ -1643,6 +1672,9 @@ html[data-motion="reduced"] .founder-glitter.entered.is-inview {
   .motion-control { margin-left: auto; }
 }
 
+@media (min-width: 981px) {
+  .motion-control { margin-left: auto; }
+}
 @media (max-width: 640px) {
   .services__grid { grid-template-columns: 1fr; }
   .pathways__grid { grid-template-columns: 1fr; }
