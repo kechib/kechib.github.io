@@ -14,21 +14,72 @@
   --color-cream: #F4F0E8;
   --color-ivory: #FBF8F2;
   --color-mist: #ECE6DC;
-  --color-plum: #4D2534;
 
-  /* Spectrum */
-  --color-aubergine: #3A183D;
-  --color-purple-plum: #59294F;
-  --color-orchid: #79456F;
-  --color-mauve: #B68BA7;
-  --color-lavender: #DED1DF;
-  --color-berry: #8D3F63;
-  --color-rose: #B85D7B;
-  --color-blush: #D98FA4;
-  --color-petal: #EDBBC6;
-  --color-powder: #F6DDE2;
+  /* Anchors */
+  --color-plum: #4A1F32;
+  --color-aubergine: #371540;
+
+  /* Purple — intelligence / research */
+  --color-plum-2: #552350;
+  --color-orchid: #7A3D72;
+  --color-mauve: #B584A9;
+  --color-lavender: #DDD0E0;
+
+  /* Pink — beauty / humanity */
+  --color-berry: #913D66;
+  --color-rose: #BC5A80;
+  --color-blush: #DD8BA8;
+  --color-petal: #F0B8CA;
+  --color-powder: #F8DAE1;
+
+  /* Text */
+  --color-text: #4A1F32;
+  --color-text-soft: #6B4557;
+  --color-heading: #4A1F32;
+
+  /* Surfaces */
+  --color-surface: #FBF8F2;
+  --color-surface-raised: #DDD0E0;
+  --color-surface-sunken: #ECE6DC;
+  --color-line: rgba(77, 37, 52, 0.18);
+  --color-line-strong: rgba(77, 37, 52, 0.5);
 
   /* Fonts */
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
+
+  /* Scale (editorial, fluid) */
+  --text-xs: 0.78rem;
+  --text-sm: 0.9rem;
+  --text-md: 1.05rem;
+  --text-lg: 1.3rem;
+  --text-xl: 1.7rem;
+  --text-2xl: 2.3rem;
+  --text-3xl: 3rem;
+  --text-4xl: clamp(2.8rem, 7vw, 5.2rem);
+
+  /* Spacing */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.75rem;
+  --space-4: 3rem;
+  --space-5: 5rem;
+  --space-6: 8rem;
+
+  /* Layout */
+  --shell: 1200px;
+  --radius: 14px;
+  --radius-lg: 26px;
+  --max-line: 64ch;
+
+  /* Motion */
+  --dur: 240ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Breakpoints */
+  --breakpoint-wide: 1121px;
+  --breakpoint-laptop: 901px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-mobile: 768px;
+  --breakpoint-small: 430px;
 }
