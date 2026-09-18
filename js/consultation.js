@@ -683,7 +683,7 @@
     return h;
   }
 
-  /* --- Stage 3: Services --- */
+/* --- Stage 3: Services --- */
   function renderServices() {
     var h = stageHeader("What We'll Explore", "Select everything you'd like Ingressible to explore. You can choose more than one.");
     h += "<div class=\"service-groups\">";
@@ -692,7 +692,8 @@
       h += "<div class=\"service-group\"><p class=\"service-group__title\">" + escapeHtml(group.label) + "</p><div class=\"service-grid\">";
       group.items.forEach(function (svc) {
         var sel = state.selectedServices.indexOf(svc.id) !== -1;
-        h += "<button type=\"button\" class=\"service-card\" aria-pressed=\"" + sel + "\" data-service=\"" + svc.id + "\">" +
+        var hasScopeData = hasServiceScopeData(svc.id);
+        h += "<button type=\"button\" class=\"service-card\" aria-pressed=\"" + sel + "\" data-service=\"" + svc.id + "\"" + (hasScopeData ? " data-has-scope=\"true\"" : "") + ">" +
           escapeHtml(svc.label) + "<span class=\"service-card__desc\">" + escapeHtml(svc.desc) + "</span></button>";
       });
       h += "</div></div>";
@@ -749,6 +750,9 @@
         "<label for=\"task-" + t.label.replace(/[^a-z]/gi, "") + "\"><strong>" + escapeHtml(t.label) + "</strong><br><span style=\"font-size:var(--text-xs);color:var(--text-soft)\">" + escapeHtml(t.desc) + "</span></label></div>";
     });
     h += "</div>";
+    h += "<div class=\"service-actions\" style=\"margin-top:var(--space-2)\">" +
+      "<button type=\"button\" data-action=\"select-all-tasks\">Select all</button>" +
+      "<button type=\"button\" data-action=\"clear-tasks\">Clear selections</button></div>";
     h += "<div class=\"intake-field\"><label for=\"tasks-free\">Additional tasks or context <span class=\"intake-optional\">Optional</span></label>" +
       "<textarea id=\"tasks-free\" name=\"customerTasksFree\" rows=\"3\">" + escapeHtml(state.customerTasksFree) + "</textarea></div>";
     h += navButtons(true, nextBtn());
@@ -792,7 +796,8 @@
   function scopeProductsSection() {
     var h = "<div class=\"intake-section-label\">Products / Experiences</div>";
     state.products.forEach(function (prod, i) {
-      h += "<div style=\"background:var(--ivory);border:1px solid var(--line);border-radius:var(--radius);padding:0.85rem 1rem;margin-bottom:0.5rem;\">" +
+      var hasContent = prod.name || prod.category || prod.sku || prod.version || prod.prototypeVersion || prod.stage || prod.variants || prod.packagingType || (prod.components && prod.components.length) || (prod.conditions && prod.conditions.length) || prod.notes;
+      h += "<div style=\"background:var(--ivory);border:1px solid var(--line);border-radius:var(--radius);padding:0.85rem 1rem;margin-bottom:0.5rem;position:relative;\">" +
         "<div class=\"intake-field intake-field--half\">" +
         "<div><label for=\"prod-name-" + i + "\">Product Name</label>" +
         "<input type=\"text\" id=\"prod-name-" + i + "\" data-product=\"" + i + "\" data-field=\"name\" value=\"" + escapeHtml(prod.name) + "\"></div>" +
@@ -804,7 +809,9 @@
         "<div><label for=\"prod-version-" + i + "\">Version / Stage</label>" +
         "<input type=\"text\" id=\"prod-version-" + i + "\" data-product=\"" + i + "\" data-field=\"version\" value=\"" + escapeHtml(prod.version) + "\"></div></div>" +
         "<div class=\"intake-field\"><label for=\"prod-notes-" + i + "\">Notes <span class=\"intake-optional\">Optional</span></label>" +
-        "<textarea id=\"prod-notes-" + i + "\" data-product=\"" + i + "\" data-field=\"notes\" rows=\"2\">" + escapeHtml(prod.notes) + "</textarea></div></div>";
+        "<textarea id=\"prod-notes-" + i + "\" data-product=\"" + i + "\" data-field=\"notes\" rows=\"2\">" + escapeHtml(prod.notes) + "</textarea></div>" +
+        (state.products.length > 1 ? "<button type=\"button\" class=\"btn--secondary\" data-action=\"remove-product\" data-product-index=\"" + i + "\" style=\"font-size:var(--text-xs);position:absolute;top:0.5rem;right:0.5rem;padding:0.25rem 0.5rem;\" " + (hasContent ? "data-has-content=\"true\"" : "") + ">Remove</button>" : "") +
+        "</div>";
     });
     h += "<button type=\"button\" class=\"btn--secondary\" data-action=\"add-product\" style=\"font-size:var(--text-xs)\">+ Add another product / experience</button>";
     return h;
@@ -1029,6 +1036,9 @@
         "<label for=\"" + id + "\"><strong>" + escapeHtml(d.label) + "</strong><br><span style=\"font-size:var(--text-xs);color:var(--text-soft)\">" + escapeHtml(d.desc) + "</span></label></div>";
     });
     h += "</div>";
+    h += "<div class=\"service-actions\" style=\"margin-top:var(--space-2)\">" +
+      "<button type=\"button\" data-action=\"select-all-deliverables\">Select all</button>" +
+      "<button type=\"button\" data-action=\"clear-deliverables\">Clear selections</button></div>";
     h += navButtons(true, nextBtn());
     return h;
   }
@@ -1318,7 +1328,12 @@
     else if (action === "back") goBack();
     else if (action === "select-all") selectAllServices();
     else if (action === "clear-services") clearServices();
+    else if (action === "select-all-tasks") selectAllTasks();
+    else if (action === "clear-tasks") clearTasks();
+    else if (action === "select-all-deliverables") selectAllDeliverables();
+    else if (action === "clear-deliverables") clearDeliverables();
     else if (action === "add-product") addProduct();
+    else if (action === "remove-product") removeProduct(target);
     else if (action === "submit") submitIntake();
     else if (action === "retry-submit") { isSubmitting = false; markSubmissionStatus("draft"); currentStep = 10; render(); setTimeout(submitIntake, 150); }
     else if (action === "back-to-review") { isSubmitting = false; markSubmissionStatus("draft"); currentStep = 10; render(); }
@@ -1366,14 +1381,112 @@
     }
   }
 
+  function hasServiceScopeData(serviceId) {
+    switch (serviceId) {
+      case "fragrance":
+        return state.fragranceScope.moments.length > 0 || state.fragranceScope.components.length > 0 || state.fragranceScope.questions;
+      case "makeup":
+        return state.makeupScope.areas.length > 0 || state.makeupScope.similarDistinguishable;
+      case "body-care":
+        return state.bodyCareScope.areas.length > 0;
+      case "packaging":
+        return state.packagingScope.components.length > 0 || state.packagingScope.questions;
+      case "web":
+        return state.webScope.prodUrl || state.webScope.stagingUrl || state.webScope.criticalFlows;
+      case "mobile-web":
+        return state.mobileWebScope.responsiveUrl || state.mobileWebScope.criticalJourneys;
+      case "ios":
+        return state.iosScope.appName || state.iosScope.criticalWorkflows;
+      case "android":
+        return state.androidScope.appName || state.androidScope.criticalWorkflows;
+      case "remediation":
+        return state.remediationScope.issuesIdentified || state.remediationScope.existingReport;
+      case "retest":
+        return state.retestScope.originalAudit || state.retestScope.findingIds;
+      case "retail":
+        return state.retailScope.storeType || state.retailScope.locations || state.retailScope.areas;
+      case "customer-service":
+      case "connected-journey":
+      case "prototype":
+      case "other-beauty":
+      case "assessment":
+      case "strategy":
+      case "training":
+      case "research":
+      case "custom":
+        return false;
+      default:
+        return false;
+    }
+  }
+
   function toggleService(card) {
     var id = card.getAttribute("data-service");
     var idx = state.selectedServices.indexOf(id);
-    if (idx === -1) { state.selectedServices.push(id); card.setAttribute("aria-pressed", "true"); track("intake_service_selected", { service: id }); }
-    else { state.selectedServices.splice(idx, 1); card.setAttribute("aria-pressed", "false"); track("intake_service_removed", { service: id }); }
+    if (idx === -1) {
+      state.selectedServices.push(id);
+      card.setAttribute("aria-pressed", "true");
+      track("intake_service_selected", { service: id });
+    } else {
+      var hasScope = hasServiceScopeData(id);
+      if (hasScope) {
+        if (!confirm("Removing \"" + getServiceLabel(id) + "\" will discard its scope details. Continue?")) {
+          return;
+        }
+        clearServiceScopeData(id);
+      }
+      state.selectedServices.splice(idx, 1);
+      card.setAttribute("aria-pressed", "false");
+      track("intake_service_removed", { service: id });
+    }
     var count = root.querySelector(".intake-status");
     if (count) count.textContent = state.selectedServices.length + " service" + (state.selectedServices.length !== 1 ? "s" : "") + " selected";
     saveDraft();
+  }
+
+  function getServiceLabel(id) {
+    var allServices = [];
+    Object.keys(SERVICES).forEach(function (g) { SERVICES[g].items.forEach(function (i) { allServices.push(i); }); });
+    var svc = allServices.find(function (s) { return s.id === id; });
+    return svc ? svc.label : id;
+  }
+
+  function clearServiceScopeData(id) {
+    switch (id) {
+      case "fragrance":
+        state.fragranceScope = { moments: [], components: [], questions: "" };
+        break;
+      case "makeup":
+        state.makeupScope = { areas: [], similarDistinguishable: "", questions: "" };
+        break;
+      case "body-care":
+        state.bodyCareScope = { areas: [], questions: "" };
+        break;
+      case "packaging":
+        state.packagingScope = { components: [], questions: "" };
+        break;
+      case "web":
+        state.webScope = { prodUrl: "", stagingUrl: "", authenticated: false, testAccount: "", cms: "", designSystem: "", thirdParty: "", criticalFlows: "", browsers: "", standards: "" };
+        break;
+      case "mobile-web":
+        state.mobileWebScope = { responsiveUrl: "", criticalJourneys: "", targetBrowsers: "", targetDevices: "", orientation: "", textResizing: "" };
+        break;
+      case "ios":
+        state.iosScope = { appName: "", appStoreUrl: "", buildInfo: "", version: "", buildNumber: "", targetDevices: "", targetIos: "", authentication: "", testAccount: "", criticalWorkflows: "" };
+        break;
+      case "android":
+        state.androidScope = { appName: "", playStoreUrl: "", buildInfo: "", version: "", buildNumber: "", targetDevices: "", targetAndroid: "", authentication: "", testAccount: "", criticalWorkflows: "" };
+        break;
+      case "remediation":
+        state.remediationScope = { issuesIdentified: "", identifiedBy: "", existingReport: "", implementers: "", sourceAccess: "", designAccess: "", handoffAudiences: [] };
+        break;
+      case "retest":
+        state.retestScope = { originalAudit: "", findingIds: "", originalVersion: "", newVersion: "", fixSummary: "", targetEnvironments: "", targetAt: "", reproduceConditions: false };
+        break;
+      case "retail":
+        state.retailScope = { storeType: "", locations: "", numLocations: "", authorizationStatus: "", areas: "", restrictions: "", photography: false, staffParticipation: false, digitalKiosks: false, excludedAreas: "" };
+        break;
+    }
   }
 
   function selectRadio(card) {
@@ -1412,8 +1525,49 @@
     saveDraft();
   }
 
+  function selectAllTasks() {
+    state.customerTasks = CUSTOMER_TASKS.map(function (t) { return t.label; });
+    $$("input[type=checkbox][id^=\"task-\"]", root).forEach(function (cb) { cb.checked = true; });
+    track("intake_tasks_selected", { count: state.customerTasks.length });
+    saveDraft();
+  }
+
+  function clearTasks() {
+    state.customerTasks = [];
+    $$("input[type=checkbox][id^=\"task-\"]", root).forEach(function (cb) { cb.checked = false; });
+    track("intake_tasks_cleared", {});
+    saveDraft();
+  }
+
+  function selectAllDeliverables() {
+    state.deliverables = DELIVERABLES.map(function (d) { return d.label; });
+    $$("input[type=checkbox][id^=\"del-\"]", root).forEach(function (cb) { cb.checked = true; });
+    track("intake_deliverables_selected", { count: state.deliverables.length });
+    saveDraft();
+  }
+
+  function clearDeliverables() {
+    state.deliverables = [];
+    $$("input[type=checkbox][id^=\"del-\"]", root).forEach(function (cb) { cb.checked = false; });
+    track("intake_deliverables_cleared", {});
+    saveDraft();
+  }
+
   function addProduct() {
     state.products.push({ name: "", category: "", sku: "", version: "", prototypeVersion: "", stage: "", variants: "", packagingType: "", components: [], conditions: [], notes: "" });
+    saveDraft();
+    render();
+  }
+
+  function removeProduct(btn) {
+    var index = parseInt(btn.getAttribute("data-product-index"), 10);
+    var hasContent = btn.getAttribute("data-has-content") === "true";
+    if (hasContent) {
+      if (!confirm("This product has details entered. Removing it will discard all its data. Continue?")) {
+        return;
+      }
+    }
+    state.products.splice(index, 1);
     saveDraft();
     render();
   }

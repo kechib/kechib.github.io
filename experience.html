@@ -35,15 +35,13 @@
         <a class="brand" href="index.html">
           <span class="brand__mark" aria-hidden="true">I</span>
           <span class="brand__name">Ingressible</span>
-          <span class="brand__sub">Kechi Shellian Boniface, Founder</span>
         </a>
 
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
-          <span class="nav-toggle__label nav-toggle__label--open">Menu</span>
-          <span class="nav-toggle__label nav-toggle__label--close">Close</span>
-        </button>
-
         <nav class="site-nav" id="site-nav" aria-label="Main">
+          <button class="nav-close" type="button" aria-label="Close navigation">
+            <span class="nav-close__icon" aria-hidden="true">×</span>
+            <span class="nav-close__label">Close navigation</span>
+          </button>
           <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="learn.html">Learn About Me</a></li>
@@ -51,19 +49,36 @@
             <li><a href="experience.html" aria-current="page">Experience</a></li>
             <li><a href="work.html">Selected Work</a></li>
             <li><a href="contact.html">Contact</a></li>
-            <!-- Nav item removed - CTA in header-actions -->
           </ul>
+          <div class="site-nav__mobile-actions" aria-hidden="true">
+            <a class="btn btn--primary site-nav__mobile-cta" href="consultation">Start a Consultation</a>
+            <div class="motion-control site-nav__mobile-motion" aria-label="Motion preference">
+              <span class="motion-control__label" id="motion-label-mobile">Motion</span>
+              <div class="motion-control__group" role="radiogroup" aria-labelledby="motion-label-mobile">
+                <button class="is-selected" type="button" role="radio" aria-checked="true" data-motion="vivid">Vivid</button>
+                <button type="button" role="radio" aria-checked="false" data-motion="reduced">No motion</button>
+              </div>
+            </div>
+          </div>
         </nav>
 
         <div class="header-actions">
-          <a class="btn btn--primary" href="consultation">Start a Consultation</a>
-          <div class="motion-control" aria-label="Motion preference">
+          <a class="btn btn--primary header-actions__cta" href="consultation">Start a Consultation</a>
+          <div class="motion-control header-actions__motion" aria-label="Motion preference">
             <span class="motion-control__label" id="motion-label">Motion</span>
             <div class="motion-control__group" role="radiogroup" aria-labelledby="motion-label">
               <button class="is-selected" type="button" role="radio" aria-checked="true" data-motion="vivid">Vivid</button>
               <button type="button" role="radio" aria-checked="false" data-motion="reduced">No motion</button>
             </div>
           </div>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
+            <span class="nav-toggle__icon" aria-hidden="true">
+              <svg width="20" height="16" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 2.5H19M1 8H19M1 13.5H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span class="nav-toggle__label">Menu</span>
+          </button>
         </div>
       </div>
     </div>
@@ -287,13 +302,19 @@
 
   <nav class="page-nav">
     <div class="shell">
-      <a class="page-nav__link prev" href="consulting.html" title="Ingressible Consulting">
-        <span aria-hidden="true">←</span>
-        <span class="sr-only">Ingressible Consulting</span>
+      <a class="page-nav__link prev" href="consulting.html" aria-label="Previous page: Ingressible Consulting">
+        <span class="page-nav__icon" aria-hidden="true">←</span>
+        <span class="page-nav__label">
+          <span class="page-nav__direction">Previous</span>
+          <span class="page-nav__page">Ingressible Consulting</span>
+        </span>
       </a>
-      <a class="page-nav__link next" href="work.html" title="Selected Work">
-        <span class="sr-only">Selected Work</span>
-        <span aria-hidden="true">→</span>
+      <a class="page-nav__link next" href="work.html" aria-label="Next page: Selected Work">
+        <span class="page-nav__label">
+          <span class="page-nav__direction">Next</span>
+          <span class="page-nav__page">Selected Work</span>
+        </span>
+        <span class="page-nav__icon" aria-hidden="true">→</span>
       </a>
     </div>
   </nav>

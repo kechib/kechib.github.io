@@ -199,36 +199,69 @@
 
   /* ---------- Mobile navigation ---------- */
   var navToggle = document.querySelector(".nav-toggle");
+  var navClose = document.querySelector(".nav-close");
   var nav = document.getElementById("site-nav");
+  var mobileActions = nav ? nav.querySelector(".site-nav__mobile-actions") : null;
+
+  function setTriggerLabels(open) {
+    if (!navToggle) return;
+    navToggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  }
+
+  function openNav() {
+    nav.classList.add("is-open");
+    navToggle.setAttribute("aria-expanded", "true");
+    setTriggerLabels(true);
+    if (mobileActions) mobileActions.setAttribute("aria-hidden", "false");
+    var firstLink = nav.querySelector("a");
+    if (firstLink) firstLink.focus();
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeNav() {
+    nav.classList.remove("is-open");
+    navToggle.setAttribute("aria-expanded", "false");
+    setTriggerLabels(false);
+    if (mobileActions) mobileActions.setAttribute("aria-hidden", "true");
+    navToggle.focus();
+    document.body.style.overflow = "";
+  }
 
   if (navToggle && nav) {
     navToggle.addEventListener("click", function () {
       var open = nav.classList.toggle("is-open");
-      navToggle.setAttribute("aria-expanded", open ? "true" : "false");
-      navToggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
       if (open) {
-        var firstLink = nav.querySelector("a");
-        if (firstLink) firstLink.focus();
+        openNav();
       } else {
-        navToggle.focus();
+        closeNav();
       }
     });
 
+    if (navClose) {
+      navClose.addEventListener("click", closeNav);
+    }
+
     document.addEventListener("keydown", function (evt) {
       if (evt.key === "Escape" && nav.classList.contains("is-open")) {
-        nav.classList.remove("is-open");
-        navToggle.setAttribute("aria-expanded", "false");
-        navToggle.focus();
+        closeNav();
       }
     });
 
     nav.querySelectorAll("a").forEach(function (link) {
       link.addEventListener("click", function () {
         if (nav.classList.contains("is-open")) {
-          nav.classList.remove("is-open");
-          navToggle.setAttribute("aria-expanded", "false");
+          closeNav();
         }
       });
+    });
+
+    // Close on click outside
+    document.addEventListener("click", function (evt) {
+      if (nav.classList.contains("is-open") &&
+          !nav.contains(evt.target) &&
+          !navToggle.contains(evt.target)) {
+        closeNav();
+      }
     });
   }
 
