@@ -1238,6 +1238,7 @@
   /* --- Success --- */
   function renderSuccess() {
     var sid = state.submissionId || uuid();
+    var ref = state.publicReference || sid;
     var svcs = state.selectedServices.map(function (id) { var s = findService(id); return s ? s.label : id; });
     /* Preserve a submitted snapshot for refresh-restore, then clear the
        editable draft so a stale draft can never overwrite the confirmation. */
@@ -1245,25 +1246,18 @@
     clearDraft();
     return "<div class=\"intake-success\">" +
       "<div class=\"intake-success__icon\" aria-hidden=\"true\">&#x2713;</div>" +
-      "<h1>Your consultation brief is ready.</h1>" +
-      "<p class=\"intake-success__id\">Submission " + escapeHtml(sid) + "</p>" +
+      "<h1>Your consultation request has been received.</h1>" +
+      "<p class=\"intake-success__id\">Reference " + escapeHtml(ref) + "</p>" +
       "<div class=\"intake-success__details\"><dl>" +
       "<dt>Brand</dt><dd>" + escapeHtml(state.brand.company) + "</dd>" +
       "<dt>Services</dt><dd>" + escapeHtml(svcs.join(", ")) + "</dd>" +
       "<dt>Project Stage</dt><dd>" + escapeHtml(state.project.stage) + "</dd>" +
       "</dl></div>" +
-      "<div class=\"intake-success__next\"><p><strong>Next steps:</strong></p>" +
-      "<ol>" +
-      "<li>Ingressible reviews the scope.</li>" +
-      "<li>Kechi confirms the appropriate methods and questions.</li>" +
-      "<li>The consultation takes place.</li>" +
-      "<li>A tailored scope, proposal, and investment are prepared.</li>" +
-      "<li>Work begins after agreement and authorization.</li>" +
-      "</ol></div>" +
-      "<div class=\"intake-success__booking\">" +
-      "<a href=\"https://calendly.com/kechiboniface\" class=\"btn--primary\" style=\"display:inline-block;text-decoration:none\">Book Your Consultation</a>" +
-      "<p style=\"font-size:var(--text-xs);color:var(--text-soft);margin-top:0.5rem\">Or scheduling details will be sent by email.</p>" +
-      "</div></div>";
+      "<div class=\"intake-success__next\"><p><strong>What happens next</strong></p>" +
+      "<p>I&rsquo;ll review the information you shared and follow up by email to discuss fit, scheduling, and next steps.</p>" +
+      "<p class=\"intake-hint\">Submitting a consultation request does not create a binding engagement or require payment.</p>" +
+      "<p class=\"intake-hint\"><a href=\"index.html\" class=\"btn--secondary\" style=\"text-decoration:none\">Return Home</a></p>" +
+      "</div>";
   }
 
   /* Render confirmation from a saved snapshot (refresh after submit).
@@ -1274,26 +1268,17 @@
     });
     var h = "<div class=\"intake-success\">" +
       "<div class=\"intake-success__icon\" aria-hidden=\"true\">&#x2713;</div>" +
-      "<h1 tabindex=\"-1\" id=\"success-restored-heading\">Your consultation brief is ready.</h1>" +
-      "<p class=\"intake-success__id\">Submission " + escapeHtml(snap.submissionId || "") + "</p>" +
+      "<h1 tabindex=\"-1\" id=\"success-restored-heading\">Your consultation request has been received.</h1>" +
+      "<p class=\"intake-success__id\">Reference " + escapeHtml(snap.submissionId || "") + "</p>" +
       "<div class=\"intake-success__details\"><dl>" +
       "<dt>Brand</dt><dd>" + escapeHtml(snap.brand || "") + "</dd>" +
       "<dt>Services</dt><dd>" + escapeHtml(svcLabels.join(", ")) + "</dd>" +
       "<dt>Project Stage</dt><dd>" + escapeHtml(snap.projectStage || "") + "</dd>" +
       "</dl></div>" +
-      "<div class=\"intake-success__next\"><p><strong>Next steps:</strong></p>" +
-      "<ol>" +
-      "<li>Ingressible reviews the scope.</li>" +
-      "<li>Kechi confirms the appropriate methods and questions.</li>" +
-      "<li>The consultation takes place.</li>" +
-      "<li>A tailored scope, proposal, and investment are prepared.</li>" +
-      "<li>Work begins after agreement and authorization.</li>" +
-      "</ol></div>" +
-      "<div class=\"intake-success__booking\">" +
-      "<a href=\"https://calendly.com/kechiboniface\" class=\"btn--primary\" style=\"display:inline-block;text-decoration:none\">Book Your Consultation</a>" +
-      "<p style=\"font-size:var(--text-xs);color:var(--text-soft);margin-top:0.5rem\">Or scheduling details will be sent by email.</p>" +
-      "</div>" +
-      "<div style=\"margin-top:1rem\"><button type=\"button\" class=\"btn--secondary\" data-action=\"start-new\">Start a New Consultation</button></div>" +
+      "<div class=\"intake-success__next\"><p><strong>What happens next</strong></p>" +
+      "<p>I&rsquo;ll review the information you shared and follow up by email to discuss fit, scheduling, and next steps.</p>" +
+      "<p class=\"intake-hint\">Submitting a consultation request does not create a binding engagement or require payment.</p>" +
+      "<p class=\"intake-hint\"><a href=\"index.html\" class=\"btn--secondary\" style=\"text-decoration:none\">Return Home</a></p>" +
       "</div>";
     return h;
   }
@@ -1910,8 +1895,7 @@
       if (st) st.removeAttribute("aria-busy");
     }
 
-    var formspreeId = "mqpkvyog";
-    var endpoint = "https://formspree.io/f/" + formspreeId;
+    var endpoint = "/api/submit-consultation";
     var fetchOpts = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1922,18 +1906,22 @@
     fetch(endpoint, fetchOpts).then(function (r) {
       settle();
       if (r && r.ok) {
-        /* Persistence succeeded -> emit IntakeSubmittedEvent (once).
-           Guarded: an exception here must never leave the user stuck. */
-        try {
-          onSubmissionPersisted(state.submissionId);
-        } catch (persistErr) {
-          /* Event emission failed but persistence succeeded ->
-             still show success; mark for manual review. */
-          try { onDownstreamFailure(state.submissionId, "event_emit_failed"); } catch (e) {}
-          currentStep = totalSteps + 1;
-          render();
-          moveFocusToSuccess();
-        }
+        return r.json().then(function (data) {
+          if (data && data.success && data.submissionId && data.publicReference) {
+            state.publicReference = data.publicReference;
+            try {
+              onSubmissionPersisted(data.submissionId);
+            } catch (persistErr) {
+              try { onDownstreamFailure(data.submissionId, "event_emit_failed"); } catch (e) {}
+            }
+            currentStep = totalSteps + 1;
+            render();
+            moveFocusToSuccess();
+          } else {
+            markSubmissionStatus("draft");
+            showSubmissionError("unexpected_response");
+          }
+        });
       } else {
         /* Persistence failed -> keep draft, allow retry, no downstream trigger. */
         markSubmissionStatus("draft");
