@@ -1895,7 +1895,14 @@
       if (st) st.removeAttribute("aria-busy");
     }
 
-    var endpoint = "/api/submit-consultation";
+    // Production Edge Function endpoint (Supabase public API).
+// This URL is safe to expose in the browser; the function is designed for
+// anonymous use and CORS is configured on the server side.
+const SUBMIT_CONSULTATION_ENDPOINT =
+  "https://hnldnxbwxwrkpjarykyf.supabase.co/functions/v1/submit-consultation";
+
+var endpoint = SUBMIT_CONSULTATION_ENDPOINT;
+
     var fetchOpts = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
