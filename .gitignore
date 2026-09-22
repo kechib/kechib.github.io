@@ -1,2 +1,5 @@
 node_modules/
 package-lock.json
+supabase/.temp/
+MIGRATION_*_REPORT.md
+PHASE_A_*_REPORT.md

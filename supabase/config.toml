@@ -1,14 +1,19 @@
 # Minimal Supabase local config for CLI migrations / dry-run.
 project_id = "ingressible"
 
+# Platform validates inbound webhook/service JWT before the handler runs.
+# Handler auth still enforces exact-match service-role claims.
 [functions.process-intake-submission]
 verify_jwt = true
 
+# Dispatcher is service-only; platform validates the caller before the handler.
 [functions.intake-retry-dispatcher]
 verify_jwt = true
 
+# Worker is undeployed; do not weaken platform validation.
 [functions.notification-worker]
 verify_jwt = true
 
+# Public form endpoint must accept unauthenticated browsers.
 [functions.submit-consultation]
-verify_jwt = true
+verify_jwt = false
