@@ -138,7 +138,7 @@ export function resolveProviderConfig(
   // Default and launch provider: groq.
   return {
     provider: "groq",
-    model: env("GROQ_INTAKE_MODEL") ?? env("OPENAI_INTAKE_MODEL") ?? "openai/gpt-oss-20b",
+    model: env("GROQ_INTAKE_MODEL") ?? "openai/gpt-oss-20b",
     apiKey: env("GROQ_API_KEY") ?? null,
   };
 }
