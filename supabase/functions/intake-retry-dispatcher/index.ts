@@ -7,60 +7,21 @@
 // ==========================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { authorize, requirePost } from "./auth.ts";
+import { clampLimit, selectDueJobs } from "./select.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const INTERNAL_SECRET = Deno.env.get("INTAKE_INTERNAL_SECRET") ?? null;
+const SUPABASE_JWKS = Deno.env.get("SUPABASE_JWKS") ?? null;
 const PROCESS_URL = Deno.env.get("INTAKE_PROCESS_URL") ??
   `${SUPABASE_URL}/functions/v1/process-intake-submission`;
 const MAX_BATCH = Number(Deno.env.get("INTAKE_RETRY_BATCH") ?? "5");
 
-const authHeaderNames = [
-  "x-intake-internal-secret",
-  "x-internal-secret",
-  "x-webhook-secret",
-];
-
-function extractInternalSecret(req: Request): string | null {
-  for (const name of authHeaderNames) {
-    const v = req.headers.get(name);
-    if (v) return v;
-  }
-  return null;
-}
-
-/** service_role JWT in Authorization (webhook/platform path). */
-function isServiceRoleAuth(req: Request): boolean {
-  const auth = req.headers.get("Authorization") ?? "";
-  const m = /^Bearer\s+(.+)$/i.exec(auth);
-  if (!m) return false;
-  try {
-    const parts = m[1].split(".");
-    if (parts.length < 2) return false;
-    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
-    const payload = JSON.parse(atob(padded));
-    return payload?.role === "service_role";
-  } catch {
-    return false;
-  }
-}
-
-function authorize(req: Request): Response | null {
-  const provided = extractInternalSecret(req);
-  if (INTERNAL_SECRET && provided && provided === INTERNAL_SECRET) {
-    return null;
-  }
-  if (isServiceRoleAuth(req)) return null;
-  return Response.json(
-    { ok: false, error: "unauthorized" },
-    { status: 401 },
-  );
-}
-
-type DueJob = {
+  type DueJob = {
   id: string;
   submission_id: string;
+  status: string;
   attempt_count: number;
   max_attempts: number | null;
   next_attempt_at: string | null;
@@ -69,56 +30,27 @@ type DueJob = {
 
 // @ts-ignore Deno.serve is available on Supabase Edge runtime (unstable on old local Deno)
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*" } });
-  }
-  if (req.method !== "POST") {
-    return Response.json({ ok: false, error: "method_not_allowed" }, { status: 405 });
-  }
-  const denied = authorize(req);
+  const postDenied = requirePost(req);
+  if (postDenied) return postDenied;
+  const denied = await authorize(req, {
+    internalSecret: INTERNAL_SECRET,
+    serviceKey: SERVICE_KEY,
+    jwksJson: SUPABASE_JWKS,
+    acceptPlatformValidatedServiceRole: true,
+  });
   if (denied) return denied;
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
-  const limit = Math.min(
-    Math.max(Number(body["limit"] ?? MAX_BATCH) || MAX_BATCH, 1),
-    20,
-  );
+  const limit = clampLimit(body["limit"], MAX_BATCH);
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { persistSession: false },
   });
 
-  // Due for retry: processing_failed (or pending/queued) with next_attempt_at
-  // elapsed or null, still under max_attempts.
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
-    .from("intake_processing_jobs")
-    .select("id, submission_id, attempt_count, max_attempts, next_attempt_at, last_error")
-    .in("status", ["processing_failed", "pending", "queued"])
-    .lt("attempt_count", 3) // app MAX_ATTEMPTS; column may be null-safe via COALESCE below
-    .or(`next_attempt_at.is.null,next_attempt_at.lte.${nowIso}`)
-    .order("COALESCE(next_attempt_at, created_at)", { ascending: true })
-    .limit(limit);
-
-  // Fallback query if lt(attempt_count) rejected when max_attempts missing historically:
-  let jobs: DueJob[] = [];
+  const { jobs, error } = await selectDueJobs(supabase, nowIso, limit);
   if (error) {
-    const { data: retry, error: err2 } = await supabase
-      .from("intake_processing_jobs")
-      .select("id, submission_id, attempt_count, max_attempts, next_attempt_at, last_error")
-      .in("status", ["processing_failed", "pending", "queued"])
-      .or(`next_attempt_at.is.null,next_attempt_at.lte.${nowIso}`)
-      .order("created_at", { ascending: true })
-      .limit(limit * 2);
-    if (err2) {
-      return Response.json({ ok: false, error: err2.message }, { status: 500 });
-    }
-    jobs = (retry ?? []).filter((j) => {
-      const max = j.max_attempts ?? 3;
-      return (j.attempt_count ?? 0) < max;
-    }).slice(0, limit);
-  } else {
-    jobs = (data ?? []) as DueJob[];
+    return Response.json({ ok: false, error }, { status: 500 });
   }
 
   const results: Array<Record<string, unknown>> = [];
@@ -133,12 +65,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
         },
         body: JSON.stringify({ submission_id: job.submission_id }),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({})) as Record<string, unknown>;
+      // Sanitized per-job result: whitelist known fields only (never echo
+      // arbitrary payload content back to callers/logs).
       results.push({
         submission_id: job.submission_id,
         http: res.status,
         ok: res.ok,
-        result: json,
+        result: {
+          ok: json["ok"],
+          status: json["status"],
+          duplicate: json["duplicate"],
+          recovered: json["recovered"],
+          agentError: json["agentError"],
+          retryable: json["retryable"],
+          next_attempt_at: json["next_attempt_at"],
+          error: typeof json["error"] === "string" ? json["error"] : undefined,
+        },
       });
     } catch (e) {
       results.push({
