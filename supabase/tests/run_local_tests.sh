@@ -42,7 +42,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS intake_processing_jobs_sub_event_uq
     ON public.intake_processing_jobs (submission_id, event_type);
 FIX
   echo
-  cat "$ROOT/supabase/migrations/20260922000001_harden_claim_intake_jobs.sql"
+  cat "$ROOT/supabase/migrations/20260922160000_harden_claim_intake_jobs.sql"
   echo
   cat "$ROOT/supabase/tests/test_claim_intake_jobs.sql"
   echo
