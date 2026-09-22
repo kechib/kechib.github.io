@@ -80,6 +80,11 @@ export function classifyIntakeError(
     };
   }
 
+  // Explicit timeout / network failure from fetch (AbortSignal or DNS).
+  if (code === "AI_TIMEOUT" || code === "AI_NETWORK_ERROR") {
+    return { code, detail: d, status: "processing_failed", retryable: true };
+  }
+
   // Hard provider client errors: bad schema, bad key, forbidden — no retry.
   if (code === "AI_HTTP_400" || code === "AI_HTTP_401" || code === "AI_HTTP_403" || code === "AI_HTTP_404" || code === "AI_HTTP_422") {
     return { code, detail: d, status: "processing_failed", retryable: false };
