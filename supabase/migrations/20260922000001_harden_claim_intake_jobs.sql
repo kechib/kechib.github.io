@@ -3,6 +3,7 @@
 -- Forward migration: max-attempt guard, attempt eligibility, ACL lockdown.
 -- Production defects addressed:
 --   * claim eligible when attempt_count >= max (no guard) → attempt 4+
+--   * processing_failed with NULL next_attempt_at wrongly claimable (mass retry)
 --   * SECURITY DEFINER with broad PUBLIC/anon/authenticated EXECUTE
 --   * no max_attempts column on intake_processing_jobs (add if missing)
 -- Idempotent: safe to re-apply.
@@ -27,8 +28,12 @@ BEGIN
 END $$;
 
 -- 2) Claim RPC scoped to one submission (used by process-intake-submission).
---    Eligibility: pending / queued / due retry (processing_failed with
---    next_attempt_at NULL or past) AND attempt_count < max_attempts.
+--    Eligibility:
+--      * pending/queued: claimable (first claim may have next_attempt_at NULL)
+--      * processing_failed: claimable ONLY if next_attempt_at IS NOT NULL
+--        AND next_attempt_at <= now() (NULL next_attempt_at = terminal, no
+--        automatic retry) AND attempt_count < max_attempts
+--      * processing / processed / needs_review: NEVER claimable
 --    Atomic: FOR UPDATE SKIP LOCKED; increments attempt_count exactly once.
 CREATE OR REPLACE FUNCTION public.claim_next_intake_job_for_submission(
     p_submission_id text
@@ -57,7 +62,8 @@ BEGIN
                     status IN ('pending', 'queued')
                     OR (
                         status = 'processing_failed'
-                        AND (next_attempt_at IS NULL OR next_attempt_at <= now())
+                        AND next_attempt_at IS NOT NULL
+                        AND next_attempt_at <= now()
                     )
               )
               AND attempt_count < max_attempts
@@ -97,7 +103,8 @@ BEGIN
                     status IN ('pending', 'queued')
                     OR (
                         status = 'processing_failed'
-                        AND (next_attempt_at IS NULL OR next_attempt_at <= now())
+                        AND next_attempt_at IS NOT NULL
+                        AND next_attempt_at <= now()
                     )
               )
               AND attempt_count < max_attempts

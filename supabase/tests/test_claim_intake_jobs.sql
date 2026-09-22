@@ -1,9 +1,14 @@
 -- Local SQL tests for hardened claim RPC (run against Docker supabase_db).
 -- Runner creates minimal fixtures, applies migration, then runs these asserts, ROLLBACK.
+-- Coverage: T1 pending claim; T2 max-attempt guard; T3 due retry attempt=2;
+--   T4 future next_attempt; T5 global claim; T6 ACL; T7 search_path;
+--   T8 NULL next_attempt terminal; T9 needs_review/processed/processing never;
+--   T10 attempt ladder 1..3 then attempt-4 impossible; T11 single winner;
+--   T12 global claim skips terminal processing_failed.
 \set ON_ERROR_STOP on
 
 -- ---------------------------------------------------------------------------
--- T1–T5: claim eligibility / max-attempt guard
+-- T1–T7: claim eligibility / max-attempt guard / ACL / search_path
 -- ---------------------------------------------------------------------------
 DO $$
 DECLARE
@@ -32,9 +37,10 @@ BEGIN
     END IF;
     RAISE NOTICE 'T1 PASS: claim pending → attempt=1 processing';
 
-    -- T2: at max attempts with next_attempt_at NULL must NOT claim (attempt 4 bug)
+    -- T2: at max attempts with due next_attempt must NOT claim (attempt 4 bug)
     UPDATE public.intake_processing_jobs
-       SET status = 'processing_failed', attempt_count = 3, next_attempt_at = NULL
+       SET status = 'processing_failed', attempt_count = 3,
+           next_attempt_at = now() - interval '1 second'
      WHERE id = j.id;
 
     SELECT count(*) INTO claimed_count
@@ -143,4 +149,207 @@ BEGIN
         RAISE EXCEPTION 'T7 FAIL: search_path not set, got %', sp;
     END IF;
     RAISE NOTICE 'T7 PASS: search_path=%', sp;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- T8: processing_failed + NULL next_attempt_at is terminal (not claimable)
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    sid text := 'test-claim-null-next-001';
+    j public.intake_processing_jobs;
+    claimed_count int;
+    attempt_after int;
+    status_after text;
+BEGIN
+    DELETE FROM public.intake_processing_jobs WHERE submission_id = sid;
+    DELETE FROM public.consultation_submissions WHERE submission_id = sid;
+    INSERT INTO public.consultation_submissions (submission_id, brand, contact_email)
+    VALUES (sid, 'TestBrand', 't@example.com');
+    INSERT INTO public.intake_processing_jobs (submission_id, status, attempt_count, max_attempts, next_attempt_at)
+    VALUES (sid, 'processing_failed', 1, 3, NULL);
+
+    SELECT count(*) INTO claimed_count
+    FROM public.claim_next_intake_job_for_submission(sid) AS c;
+
+    SELECT attempt_count, status INTO attempt_after, status_after
+      FROM public.intake_processing_jobs WHERE submission_id = sid;
+
+    IF claimed_count <> 0 THEN
+        RAISE EXCEPTION 'T8 FAIL: claimed processing_failed with NULL next_attempt_at (count=%)', claimed_count;
+    END IF;
+    IF attempt_after <> 1 OR status_after <> 'processing_failed' THEN
+        RAISE EXCEPTION 'T8 FAIL: row mutated attempt=% status=%', attempt_after, status_after;
+    END IF;
+    RAISE NOTICE 'T8 PASS: NULL next_attempt_at terminal, not claimable';
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- T9: needs_review / processed never claimable (even with due next_attempt)
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    sid text := 'test-claim-terminal-001';
+    claimed_count int;
+BEGIN
+    DELETE FROM public.intake_processing_jobs WHERE submission_id = sid;
+    DELETE FROM public.consultation_submissions WHERE submission_id = sid;
+    INSERT INTO public.consultation_submissions (submission_id, brand, contact_email)
+    VALUES (sid, 'TestBrand', 't@example.com');
+
+    INSERT INTO public.intake_processing_jobs (submission_id, status, attempt_count, max_attempts, next_attempt_at)
+    VALUES (sid, 'needs_review', 0, 3, now() - interval '1 hour');
+
+    SELECT count(*) INTO claimed_count
+    FROM public.claim_next_intake_job_for_submission(sid) AS c;
+    IF claimed_count <> 0 THEN
+        RAISE EXCEPTION 'T9 FAIL: needs_review claimed (count=%)', claimed_count;
+    END IF;
+
+    UPDATE public.intake_processing_jobs
+       SET status = 'processed', next_attempt_at = now() - interval '1 hour',
+           completed_at = now()
+     WHERE submission_id = sid;
+
+    SELECT count(*) INTO claimed_count
+    FROM public.claim_next_intake_job_for_submission(sid) AS c;
+    IF claimed_count <> 0 THEN
+        RAISE EXCEPTION 'T9 FAIL: processed claimed (count=%)', claimed_count;
+    END IF;
+
+    -- processing status must not be claimable
+    UPDATE public.intake_processing_jobs
+       SET status = 'processing', next_attempt_at = now() - interval '1 hour',
+           completed_at = NULL
+     WHERE submission_id = sid;
+
+    SELECT count(*) INTO claimed_count
+    FROM public.claim_next_intake_job_for_submission(sid) AS c;
+    IF claimed_count <> 0 THEN
+        RAISE EXCEPTION 'T9 FAIL: processing claimed (count=%)', claimed_count;
+    END IF;
+    RAISE NOTICE 'T9 PASS: needs_review/processed/processing never claimable';
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- T10: due retry reaches attempt 3; attempt 4 impossible
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    sid text := 'test-claim-attempt-ladder-001';
+    job_id uuid;
+    got_attempt int;
+    claimed_count int;
+    attempt_final int;
+    expected_attempt int;
+BEGIN
+    DELETE FROM public.intake_processing_jobs WHERE submission_id = sid;
+    DELETE FROM public.consultation_submissions WHERE submission_id = sid;
+    INSERT INTO public.consultation_submissions (submission_id, brand, contact_email)
+    VALUES (sid, 'TestBrand', 't@example.com');
+    INSERT INTO public.intake_processing_jobs (submission_id, status, attempt_count, max_attempts)
+    VALUES (sid, 'pending', 0, 3)
+    RETURNING id INTO job_id;
+
+    FOR expected_attempt IN 1..3 LOOP
+        SELECT id, attempt_count INTO job_id, got_attempt
+          FROM public.claim_next_intake_job_for_submission(sid);
+        IF job_id IS NULL OR got_attempt <> expected_attempt THEN
+            RAISE EXCEPTION 'T10 FAIL: expected claim attempt=% got attempt=% id=%',
+                expected_attempt, got_attempt, job_id;
+        END IF;
+        IF expected_attempt < 3 THEN
+            UPDATE public.intake_processing_jobs
+               SET status = 'processing_failed',
+                   next_attempt_at = now() - interval '1 second'
+             WHERE id = job_id;
+        END IF;
+    END LOOP;
+
+    -- force due retry at attempt 3 → must NOT claim (attempt 4 impossible)
+    UPDATE public.intake_processing_jobs
+       SET status = 'processing_failed',
+           next_attempt_at = now() - interval '1 second'
+     WHERE id = job_id;
+
+    SELECT count(*) INTO claimed_count
+      FROM public.claim_next_intake_job_for_submission(sid) AS c;
+    SELECT attempt_count INTO attempt_final
+      FROM public.intake_processing_jobs WHERE id = job_id;
+
+    IF claimed_count <> 0 OR attempt_final <> 3 THEN
+        RAISE EXCEPTION 'T10 FAIL: attempt 4 possible (count=% attempt=%)',
+            claimed_count, attempt_final;
+    END IF;
+    RAISE NOTICE 'T10 PASS: attempts 1→2→3 claimed; attempt 4 impossible';
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- T11: concurrent claim — single winner, single increment
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    sid text := 'test-claim-concurrent-001';
+    id_a uuid;
+    second_count int;
+    attempt_final int;
+BEGIN
+    DELETE FROM public.intake_processing_jobs WHERE submission_id = sid;
+    DELETE FROM public.consultation_submissions WHERE submission_id = sid;
+    INSERT INTO public.consultation_submissions (submission_id, brand, contact_email)
+    VALUES (sid, 'TestBrand', 't@example.com');
+    INSERT INTO public.intake_processing_jobs (submission_id, status, attempt_count, max_attempts)
+    VALUES (sid, 'pending', 0, 3)
+    RETURNING id INTO id_a;
+
+    -- first claim wins
+    PERFORM id FROM public.claim_next_intake_job_for_submission(sid);
+
+    -- second claim (same job now processing) must find nothing
+    SELECT count(*) INTO second_count
+      FROM public.claim_next_intake_job_for_submission(sid) AS c;
+
+    SELECT attempt_count INTO attempt_final
+      FROM public.intake_processing_jobs WHERE id = id_a;
+
+    IF second_count <> 0 THEN
+        RAISE EXCEPTION 'T11 FAIL: second claim succeeded (count=%)', second_count;
+    END IF;
+    IF attempt_final <> 1 THEN
+        RAISE EXCEPTION 'T11 FAIL: attempt_count incremented more than once (%)', attempt_final;
+    END IF;
+    RAISE NOTICE 'T11 PASS: concurrent/repeat claim single winner, attempt_count=1';
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- T12: global claim skips NULL-next_attempt processing_failed rows
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    sid text := 'test-claim-global-null-001';
+    claimed_id uuid;
+    attempt_after int;
+    status_after text;
+BEGIN
+    DELETE FROM public.intake_processing_jobs WHERE submission_id = sid;
+    DELETE FROM public.consultation_submissions WHERE submission_id = sid;
+    INSERT INTO public.consultation_submissions (submission_id, brand, contact_email)
+    VALUES (sid, 'TestBrand', 't@example.com');
+    INSERT INTO public.intake_processing_jobs (submission_id, status, attempt_count, max_attempts, next_attempt_at)
+    VALUES (sid, 'processing_failed', 2, 3, NULL);
+
+    SELECT id INTO claimed_id
+      FROM public.claim_next_intake_job()
+     WHERE submission_id = sid;
+
+    SELECT attempt_count, status INTO attempt_after, status_after
+      FROM public.intake_processing_jobs WHERE submission_id = sid;
+
+    IF claimed_id IS NOT NULL THEN
+        RAISE EXCEPTION 'T12 FAIL: global claim took NULL-next_attempt job';
+    END IF;
+    IF attempt_after <> 2 OR status_after <> 'processing_failed' THEN
+        RAISE EXCEPTION 'T12 FAIL: row mutated attempt=% status=%', attempt_after, status_after;
+    END IF;
+    RAISE NOTICE 'T12 PASS: global claim skips terminal processing_failed';
 END $$;
