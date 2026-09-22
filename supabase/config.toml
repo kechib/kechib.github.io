@@ -1,0 +1,14 @@
+# Minimal Supabase local config for CLI migrations / dry-run.
+project_id = "ingressible"
+
+[functions.process-intake-submission]
+verify_jwt = true
+
+[functions.intake-retry-dispatcher]
+verify_jwt = true
+
+[functions.notification-worker]
+verify_jwt = true
+
+[functions.submit-consultation]
+verify_jwt = true
