@@ -7,20 +7,36 @@
 //   Idempotent on submission_id. Supabase is the source of truth; webhook
 //   payloads are identifiers only, never trusted intake content.
 //
+// Auth: internal secret header (x-intake-internal-secret / x-internal-secret /
+//   x-webhook-secret) when INTAKE_INTERNAL_SECRET is set; otherwise a
+//   service_role Bearer token is required. Unauthenticated → 401.
+//
 // Env (server-side only, set via `supabase secrets set`):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (runtime-provided),
+//   INTAKE_INTERNAL_SECRET (shared with intake-retry-dispatcher),
 //   OPENAI_API_KEY (optional — absent routes to needs_review),
 //   OPENAI_INTAKE_MODEL (default: gpt-5.6-luna)
 // ==========================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  classifyIntakeError,
+  nextAttemptAt,
+} from "./classify.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? null;
 const OPENAI_MODEL = Deno.env.get("OPENAI_INTAKE_MODEL") ?? "gpt-5.6-luna";
+const INTERNAL_SECRET = Deno.env.get("INTAKE_INTERNAL_SECRET") ?? null;
 
 const MAX_ATTEMPTS = 3;
+
+const authHeaderNames = [
+  "x-intake-internal-secret",
+  "x-internal-secret",
+  "x-webhook-secret",
+];
 
 const slog = (msg: string, extra = "") =>
   console.log(`[IntakePipeline] ${msg}${extra ? " " + extra : ""}`);
@@ -31,6 +47,8 @@ type Job = {
   event_type: string;
   status: string;
   attempt_count: number;
+  max_attempts?: number | null;
+  next_attempt_at?: string | null;
 };
 
 type IntakeBrief = {
@@ -234,6 +252,8 @@ async function callOpenAI(
     const detail = await readProviderErrorDetail(res).catch(() => null);
     const e = new Error(`OpenAI HTTP ${res.status}`);
     // Exact provider status in code (status numbers are safe, non-secret).
+    // Billing/quota (429 insufficient_quota) is reclassified in classify.ts
+    // and must NOT remain a generic AI_RATE_LIMITED retry.
     (e as Error & { code?: string }).code = res.status === 429
       ? "AI_RATE_LIMITED"
       : `AI_HTTP_${res.status}`;
@@ -335,9 +355,85 @@ const SYSTEM_PROMPT = [
   "questionsForConsultation[], recommendedAssessmentModules[], recommendedPreparation[], proposalInputs.",
 ].join("\n");
 
+function extractInternalSecret(req: Request): string | null {
+  for (const name of authHeaderNames) {
+    const v = req.headers.get(name);
+    if (v) return v;
+  }
+  return null;
+}
+
+function isServiceRoleAuth(req: Request): boolean {
+  const auth = req.headers.get("Authorization") ?? "";
+  const m = /^Bearer\s+(.+)$/i.exec(auth);
+  if (!m) return false;
+  try {
+    const parts = m[1].split(".");
+    if (parts.length < 2) return false;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
+    return payload?.role === "service_role";
+  } catch {
+    return false;
+  }
+}
+
+function authorize(req: Request): Response | null {
+  const provided = extractInternalSecret(req);
+  if (INTERNAL_SECRET && provided && provided === INTERNAL_SECRET) {
+    return null;
+  }
+  // Platform webhooks / service clients present a service_role JWT.
+  if (isServiceRoleAuth(req)) return null;
+  return Response.json(
+    { ok: false, error: "unauthorized" },
+    { status: 401 },
+  );
+}
+
+/**
+ * Persist a post-claim failure. Always called after a successful claim when
+ * the invocation cannot complete, so the job never sticks in `processing`.
+ */
+// deno-lint-ignore no-explicit-any
+async function markJobFailure(
+  supabase: any,
+  job: Job,
+  code: string,
+  detail: string | null,
+): Promise<{ status: string; next_attempt_at: string | null }> {
+  const cls = classifyIntakeError(code, detail);
+  const attempts = job.attempt_count;
+  const maxAttempts = job.max_attempts ?? MAX_ATTEMPTS;
+  const next = cls.retryable ? nextAttemptAt(attempts, maxAttempts) : null;
+  const lastError = detail ? `${cls.code} | ${detail}`.slice(0, 800) : cls.code;
+  const { error } = await supabase.from("intake_processing_jobs").update({
+    status: cls.status,
+    completed_at: new Date().toISOString(),
+    last_error: lastError,
+    next_attempt_at: next,
+    updated_at: new Date().toISOString(),
+  }).eq("id", job.id);
+  if (error) {
+    slog("post-claim failure update error", `${job.id} ${error.message}`);
+  } else {
+    slog("processing failed", `${job.submission_id} ${cls.code} retryable=${cls.retryable}`);
+  }
+  return { status: cls.status, next_attempt_at: next };
+}
+
+// @ts-ignore Deno.serve is available on Supabase Edge runtime (unstable on old local Deno)
 Deno.serve(async (req: Request): Promise<Response> => {
+  const authDenied = authorize(req);
+  if (authDenied) {
+    slog("unauthorized");
+    return authDenied;
+  }
+
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
   let submissionId: string | null = null;
+  let claimed: Job | null = null;
 
   try {
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -369,17 +465,27 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // 1. Atomic claim via RPC (FOR UPDATE SKIP LOCKED): only the
     // invocation that wins the row lock proceeds; all others no-op.
     // Scoped to this submission_id so retries stay on the same job.
+    // RPC enforces attempt_count < max_attempts (see harden migration).
     const { data: claimedRows, error: claimErr } = await supabase.rpc(
       "claim_next_intake_job_for_submission",
       { p_submission_id: submissionId }
     );
-    if (claimErr || !claimedRows || (Array.isArray(claimedRows) && claimedRows.length === 0)) {
+    if (claimErr) {
+      slog("claim error", `${submissionId} ${claimErr.message}`);
+      // Distinguish "over max / not due" from infrastructure failure.
+      return Response.json(
+        { ok: false, submissionId, error: claimErr.message },
+        { status: 502 },
+      );
+    }
+    if (!claimedRows || (Array.isArray(claimedRows) && claimedRows.length === 0)) {
       // Already claimed/processed/failed-terminal — idempotent no-op.
       slog("duplicate suppressed", submissionId);
       return Response.json({ ok: true, submissionId, duplicate: true });
     }
     const job = (Array.isArray(claimedRows) ? claimedRows[0] : claimedRows) as Job;
-    slog("processing started", submissionId);
+    claimed = job;
+    slog("processing started", `${submissionId} attempt=${job.attempt_count}`);
 
     // 2. Retrieve canonical submission (never from email).
     const { data: sub, error: subErr } = await supabase
@@ -387,12 +493,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .select("*")
       .eq("submission_id", submissionId)
       .single();
-    if (subErr || !sub) throw Object.assign(new Error("submission-not-found"), { code: "NOT_FOUND" });
+    if (subErr || !sub) {
+      await markJobFailure(supabase, job, "NOT_FOUND", subErr?.message ?? null);
+      return Response.json(
+        { ok: false, submissionId, error: "submission-not-found" },
+        { status: 404 },
+      );
+    }
 
     // 3. Agent analysis. callOpenAI throws AI_NOT_CONFIGURED when no key,
     // AI_RATE_LIMITED / AI_HTTP_ERROR / AI_EMPTY_OUTPUT / AI_INVALID_OUTPUT
-    // otherwise. callOpenAI itself validates the brief — only a validated
-    // IntakeBrief ever reaches persistence (never { raw }).
+    // otherwise. Classification splits billing-quota (non-retryable) from
+    // true rate limits (retryable). callOpenAI itself validates the brief —
+    // only a validated IntakeBrief ever reaches persistence (never { raw }).
     // NOTE: job.attempt_count was ALREADY incremented once by the claim RPC;
     // failure logic below reuses it directly (no second increment).
     let brief: IntakeBrief;
@@ -406,24 +519,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
     } catch (agentErr) {
       const code = (agentErr as Error & { code?: string }).code ?? "agent-error";
       const detail = (agentErr as Error & { detail?: string }).detail ?? null;
-      slog("processing failed", `${submissionId} ${code}`);
-      const terminal = code === "AI_NOT_CONFIGURED" ? "needs_review" : "processing_failed";
-      const attempts = job.attempt_count;
-      await supabase.from("intake_processing_jobs").update({
-        status: attempts >= MAX_ATTEMPTS && terminal === "processing_failed" ? "processing_failed" : terminal,
-        completed_at: new Date().toISOString(),
-        last_error: detail ? `${code} | ${detail}`.slice(0, 800) : code,
-        next_attempt_at: attempts < MAX_ATTEMPTS
-          ? new Date(Date.now() + attempts * 5 * 60 * 1000).toISOString()
-          : null,
-      }).eq("id", job.id);
+      const outcome = await markJobFailure(supabase, job, code, detail);
       // Submission itself stays submitted — never reverted, never duplicated.
-      return Response.json({ ok: true, submissionId, status: terminal, agentError: code });
+      return Response.json({
+        ok: true,
+        submissionId,
+        status: outcome.status,
+        agentError: classifyIntakeError(code, detail).code,
+        retryable: classifyIntakeError(code, detail).retryable,
+        next_attempt_at: outcome.next_attempt_at,
+      });
     }
 
     // 4. Persist validated brief only, plus limited provider metadata
     // (response id, model, usage). Never the raw provider payload.
-    await supabase.from("intake_agent_results").upsert({
+    const upsertRes = await supabase.from("intake_agent_results").upsert({
       submission_id: submissionId,
       analysis_json: {
         ...brief,
@@ -445,15 +555,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
       updated_at: new Date().toISOString(),
     }, { onConflict: "submission_id" });
 
+    if (upsertRes.error) {
+      await markJobFailure(supabase, job, "AI_HTTP_500", upsertRes.error.message);
+      return Response.json(
+        { ok: false, submissionId, error: "persist_failed" },
+        { status: 500 },
+      );
+    }
+
     // 6. Mark job processed.
     await supabase.from("intake_processing_jobs").update({
       status: "processed", completed_at: new Date().toISOString(), last_error: null,
+      next_attempt_at: null, updated_at: new Date().toISOString(),
     }).eq("id", job.id);
     slog("processing completed", submissionId);
     return Response.json({ ok: true, submissionId, status: "processed" });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
     slog("processing failed", `${submissionId ?? "?"} ${msg}`);
+    // Post-claim safety: never leave a claimed job stuck in `processing`.
+    if (claimed) {
+      await markJobFailure(supabase, claimed, "AI_HTTP_500", msg);
+    }
     return Response.json({ ok: false, submissionId, error: msg }, { status: 500 });
   }
 });
