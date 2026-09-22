@@ -35,6 +35,8 @@ END $$;
 --        automatic retry) AND attempt_count < max_attempts
 --      * processing / processed / needs_review: NEVER claimable
 --    Atomic: FOR UPDATE SKIP LOCKED; increments attempt_count exactly once.
+--    DROP first: prod return type may differ (SQLSTATE 42P13 under CREATE OR REPLACE).
+DROP FUNCTION IF EXISTS public.claim_next_intake_job_for_submission(text);
 CREATE OR REPLACE FUNCTION public.claim_next_intake_job_for_submission(
     p_submission_id text
 )
@@ -79,6 +81,8 @@ END;
 $$;
 
 -- 3) Global claim (retry dispatcher / sweeper): next due job across submissions.
+--    DROP first: prod return type may differ (SQLSTATE 42P13 under CREATE OR REPLACE).
+DROP FUNCTION IF EXISTS public.claim_next_intake_job();
 CREATE OR REPLACE FUNCTION public.claim_next_intake_job()
 RETURNS SETOF public.intake_processing_jobs
 LANGUAGE plpgsql
