@@ -1,300 +1,187 @@
-/* ==========================================================================
-   Ingressible — Notification Worker Edge Function
-   Processes notification jobs from the notification_jobs queue.
-   ========================================================================== */
+// ==========================================================================
+// Supabase Edge Function: notification-worker
+// Runtime: Deno (Supabase Edge Functions), deployed on Ingressible Production.
+// Trigger: manual POST (no cron at launch). Processes notification_jobs for
+//   an EXPLICIT allowlist of submission_ids only — default-deny.
+//
+// Auth: verify_jwt=true (platform). Handler then enforces exact
+//   INTAKE_INTERNAL_SECRET, exact SUPABASE_SERVICE_ROLE_KEY, JWKS
+//   service_role JWT, or a platform-validated service_role payload.
+//   Unauthenticated → 401.
+//
+// Safety contracts:
+//   - authorizedSubmissionIds must be a non-empty string[] or we never claim.
+//   - EMAIL_PROVIDER/RESEND_API_KEY must resolve before any claim → else 503
+//     EMAIL_PROVIDER_REQUIRED (no fake transport, no partial sends).
+//   - Claim uses claim_notification_jobs_for_submissions (scoped RPC);
+//     the unscoped claim_notification_jobs is never called.
+//   - attempt_count is incremented once by the claim RPC only.
+//   - provider_message_id is written only after a real provider success.
+//   - Logs contain job id / type / submission id / classification only —
+//     never recipient addresses or payload content.
+//
+// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, INTAKE_INTERNAL_SECRET,
+//   SUPABASE_JWKS (optional), EMAIL_PROVIDER=resend, RESEND_API_KEY,
+//   EMAIL_FROM (optional), NOTIFICATION_INTERNAL_ADDRESS (optional).
+// ==========================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { authorize, requirePost } from "./auth.ts";
+import { isEmailConfigured, resolveEmailConfig, sendEmail } from "./email.ts";
+import {
+  NOTIFICATION_TYPES,
+  processBatch,
+  renderJob,
+  type Deps,
+  type NotificationJob,
+} from "./worker.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const INTERNAL_SECRET = Deno.env.get("INTAKE_INTERNAL_SECRET") ?? null;
+const SUPABASE_JWKS = Deno.env.get("SUPABASE_JWKS") ?? null;
+
+const slog = (msg: string, extra = "") =>
+  console.log(`[NotificationWorker] ${msg}${extra ? " " + extra : ""}`);
+
+type RpcClient = {
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  from: (table: string) => {
+    update: (patch: Record<string, unknown>) => {
+      eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
+    };
+  };
 };
 
-const MAX_BATCH_SIZE = 10;
-const PROCESSING_TIMEOUT_MS = 120000; // 2 minutes
-
-interface NotificationJob {
-  id: string;
-  submission_id: string;
-  notification_type: string;
-  recipient_type: "client" | "internal";
-  recipient_address: string | null;
-  payload: Record<string, unknown>;
+function makeDeps(supabase: RpcClient): Deps {
+  return {
+    claim: async (types, submissionIds, limit) => {
+      const { data, error } = await supabase.rpc(
+        "claim_notification_jobs_for_submissions",
+        {
+          p_types: types,
+          p_submission_ids: submissionIds,
+          p_limit: limit,
+        },
+      );
+      if (error) {
+        slog("claim rpc error", error.message.slice(0, 200));
+        return { jobs: null, error: "claim_rpc_unavailable" };
+      }
+      return { jobs: (data ?? []) as NotificationJob[] };
+    },
+    update: async (id, patch) => {
+      const { error } = await supabase
+        .from("notification_jobs")
+        .update(patch)
+        .eq("id", id);
+      if (error) {
+        slog("update error", `job=${id} ${error.message.slice(0, 200)}`);
+        return { error: error.message };
+      }
+      return {};
+    },
+    send: async (job, idempotencyKey) => {
+      const cfg = resolveEmailConfig();
+      if (!cfg) {
+        const e = new Error("email provider not configured") as Error & {
+          code: string;
+        };
+        e.code = "EMAIL_NOT_CONFIGURED";
+        throw e;
+      }
+      const rendered = renderJob(cfg, job);
+      return sendEmail(cfg, { ...rendered, idempotencyKey });
+    },
+  };
 }
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+// @ts-ignore Deno.serve is available on Supabase Edge runtime
+Deno.serve(async (req: Request): Promise<Response> => {
+  const postDenied = requirePost(req);
+  if (postDenied) return postDenied;
 
-  if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "Method not allowed" }),
-      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    return new Response(
-      JSON.stringify({ error: "Server configuration error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"), {
-    auth: { persistSession: false },
+  const authDenied = await authorize(req, {
+    internalSecret: INTERNAL_SECRET,
+    serviceKey: SERVICE_KEY,
+    jwksJson: SUPABASE_JWKS,
+    acceptPlatformValidatedServiceRole: true,
   });
+  if (authDenied) {
+    slog("unauthorized");
+    return authDenied;
+  }
+
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const rawIds = body["authorizedSubmissionIds"];
+  if (
+    !Array.isArray(rawIds) ||
+    rawIds.length === 0 ||
+    !rawIds.every((v) => typeof v === "string" && v.length > 0)
+  ) {
+    return Response.json(
+      { ok: false, error: "AUTHORIZED_IDS_REQUIRED" },
+      { status: 400 },
+    );
+  }
+  const authorizedSubmissionIds = rawIds as string[];
+
+  // Resolve email config BEFORE claiming anything.
+  if (!isEmailConfigured()) {
+    slog("blocked", "EMAIL_PROVIDER_REQUIRED (nothing claimed)");
+    return Response.json(
+      { ok: false, error: "EMAIL_PROVIDER_REQUIRED" },
+      { status: 503 },
+    );
+  }
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
+    auth: { persistSession: false },
+  }) as unknown as RpcClient;
+
+  const typesRaw = body["types"];
+  const types = Array.isArray(typesRaw)
+    ? typesRaw.filter((t): t is string => typeof t === "string")
+    : [...NOTIFICATION_TYPES];
+  const limitRaw = body["limit"];
+  const limit =
+    typeof limitRaw === "number" && Number.isFinite(limitRaw)
+      ? Math.trunc(limitRaw)
+      : 5;
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const batchSize = Math.min(body.batchSize || 5, MAX_BATCH_SIZE);
-    const types = body.types || [
-      "consultation.client_confirmation",
-      "consultation.internal_notification",
-    ];
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PROCESSING_TIMEOUT_MS);
-
-    try {
-      const results = await processBatch(supabase, types, batchSize, controller.signal);
-      return new Response(
-        JSON.stringify({ success: true, processed: results.length, results }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    const out = await processBatch(makeDeps(supabase), {
+      types,
+      authorizedSubmissionIds,
+      limit,
+      log: slog,
+    });
+    if (out.error) {
+      const status = out.error === "claim_rpc_unavailable" ? 500 : 400;
+      return Response.json(
+        { ok: false, error: out.error, claimed: 0, outcomes: [] },
+        { status },
       );
-    } catch (err) {
-      if (err.name === "AbortError") {
-        return new Response(
-          JSON.stringify({ error: "Processing timeout" }),
-          { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      throw err;
-    } finally {
-      clearTimeout(timeoutId);
     }
-  } catch (err) {
-    console.error("Notification worker error:", err);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    for (const o of out.outcomes) {
+      slog(
+        "job",
+        `id=${o.jobId} type=${o.notificationType} submission=${o.submissionId} result=${o.result}${o.code ? ` code=${o.code}` : ""}`,
+      );
+    }
+    return Response.json({
+      ok: true,
+      claimed: out.claimed,
+      outcomes: out.outcomes,
+    });
+  } catch (e) {
+    slog("worker error", (e instanceof Error ? e.message : "unknown").slice(0, 200));
+    return Response.json(
+      { ok: false, error: "internal_error" },
+      { status: 500 },
     );
   }
 });
-
-async function processBatch(
-  supabase: ReturnType<typeof createClient>,
-  types: string[],
-  batchSize: number,
-  signal: AbortSignal
-) {
-  const results = [];
-
-  // Claim jobs atomically
-  const { data: jobs, error: claimError } = await claimJobs(supabase, "consultation.client_confirmation", 5);
-  if (claimError) throw claimError;
-
-  for (const job of jobs) {
-    if (signal.aborted) break;
-
-    const result = await processJob(job);
-    results.push({ jobId: job.id, ...result });
-  }
-
-  return results;
-}
-
-async function claimJobs(
-  supabase: ReturnType<typeof createClient>,
-  notificationType: string,
-  limit: number
-): Promise<NotificationJob[]> {
-  const { data, error } = await supabase.rpc("claim_notification_jobs", {
-    p_types: ["consultation.client_confirmation"],
-    p_limit: 10,
-  });
-
-  if (claimError) throw claimError;
-  return data || [];
-}
-
-async function processJob(job: NotificationJob) {
-  const { id, submission_id, notification_type, recipient_type, recipient_address, payload } = job;
-
-  // Generate stable idempotency key for provider
-  const idempotencyKey = `notification:${id}`;
-
-  try {
-    // Mark as processing
-    await supabase
-      .from("notification_jobs")
-      .update({
-        status: "processing",
-        started_at: new Date().toISOString(),
-        attempt_count: supabase.raw("attempt_count + 1"),
-      })
-      .eq("id", job.id);
-
-    // Dispatch based on notification type
-    let result;
-    switch (notification_type) {
-      case "consultation.client_confirmation":
-        result = await sendClientConfirmation(job, idempotencyKey);
-        break;
-      case "consultation.internal_notification":
-        result = await sendInternalNotification(job, idempotencyKey);
-        break;
-      default:
-        throw new Error(`Unknown notification type: ${notification_type}`);
-    }
-
-    // Mark as sent
-    await supabase
-      .from("notification_jobs")
-      .update({
-        status: "sent",
-        completed_at: new Date().toISOString(),
-        last_error: null,
-        provider_message_id: result.messageId,
-        provider_name: result.transport,
-        provider_idempotency_key: idempotencyKey,
-        last_provider_attempt_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
-
-    return { success: true, ...result };
-  } catch (err) {
-    console.error(`Notification job ${job.id} failed:`, err);
-
-    // Increment attempt count and schedule retry if applicable
-    const { data: jobData } = await supabase
-      .from("notification_jobs")
-      .select("attempt_count, max_attempts")
-      .eq("id", job.id)
-      .single();
-
-    const attemptCount = (jobData?.attempt_count || 0) + 1;
-    const maxAttempts = jobData?.max_attempts || 3;
-
-    if (attemptCount < maxAttempts) {
-      // Schedule retry with exponential backoff
-      const backoffMinutes = Math.min(Math.pow(2, attemptCount) * 5, 60);
-      const nextAttempt = new Date(Date.now() + backoffMinutes * 60 * 1000).toISOString();
-
-      await supabase
-        .from("notification_jobs")
-        .update({
-          status: "pending",
-          attempt_count: attemptCount,
-          last_error: err.message,
-          next_attempt_at: nextAttempt,
-        })
-        .eq("id", job.id);
-
-      return { success: false, retried: true, nextAttempt };
-    } else {
-      // Max attempts exceeded
-      await supabase
-        .from("notification_jobs")
-        .update({
-          status: "failed",
-          completed_at: new Date().toISOString(),
-          last_error: err.message,
-        })
-        .eq("id", job.id);
-
-      return { success: false, failed: true, error: err.message };
-    }
-  }
-}
-
-async function sendClientConfirmation(job: NotificationJob, idempotencyKey: string) {
-  const { brand, contact_name, public_reference, created_at } = job.payload as {
-    brand: string;
-    contact_name: string;
-    public_reference: string;
-    created_at: string;
-  };
-
-  const emailTransport = Deno.env.get("EMAIL_TRANSPORT") || "real";
-  const appEnv = Deno.env.get("APP_ENV") || Deno.env.get("SUPABASE_ENV") || "development";
-  const isProduction = appEnv === "production";
-  const emailApiKey = Deno.env.get("EMAIL_API_KEY");
-
-  // Fake transport only allowed in non-production with explicit opt-in
-  if (emailTransport === "fake") {
-    if (isProduction) {
-      throw new Error("Fake email transport not allowed in production");
-    }
-    console.log(`[FAKE EMAIL] Client confirmation sent to ${job.recipient_address}`);
-    console.log(`  Subject: Ingressible consultation request received — ${job.payload.public_reference}`);
-    console.log(`  To: ${job.recipient_address}`);
-    return { transport: "fake", messageId: `fake-${Date.now()}`, idempotencyKey };
-  }
-
-  // Real transport requires API key
-  if (!emailApiKey) {
-    throw new Error("EMAIL_NOT_CONFIGURED");
-  }
-
-  // Real email provider integration would go here
-  // Example with Resend:
-  // const resend = new Resend(emailApiKey);
-  // const { data, error } = await resend.emails.send({
-  //   from: 'Ingressible <hello@ingressible.com>',
-  //   to: job.recipient_address,
-  //   subject: `Ingressible consultation request received — ${job.payload.public_reference}`,
-  //   html: renderClientConfirmationEmail(job.payload),
-  //   headers: { 'Idempotency-Key': idempotencyKey },
-  // });
-
-  return { transport: "real", messageId: "real-message-id", idempotencyKey };
-}
-
-async function sendInternalNotification(job: NotificationJob, idempotencyKey: string) {
-  const { brand, contact_name, email, public_reference, created_at } = job.payload as {
-    brand: string;
-    contact_name: string;
-    email: string;
-    public_reference: string;
-    created_at: string;
-  };
-
-  const emailTransport = Deno.env.get("EMAIL_TRANSPORT") || "real";
-  const appEnv = Deno.env.get("APP_ENV") || Deno.env.get("SUPABASE_ENV") || "development";
-  const isProduction = appEnv === "production";
-  const emailApiKey = Deno.env.get("EMAIL_API_KEY");
-
-  // Fake transport only allowed in non-production with explicit opt-in
-  if (emailTransport === "fake") {
-    if (isProduction) {
-      throw new Error("Fake email transport not allowed in production");
-    }
-    console.log(`[FAKE EMAIL] Internal notification sent to ${job.recipient_address}`);
-    console.log(`  Subject: New Ingressible consultation — ${job.payload.brand} — ${job.payload.public_reference}`);
-    return { transport: "fake", messageId: `fake-internal-${Date.now()}`, idempotencyKey };
-  }
-
-  // Real transport requires API key
-  if (!emailApiKey) {
-    throw new Error("EMAIL_NOT_CONFIGURED");
-  }
-
-  // Real email provider integration would go here
-  // Example with Resend:
-  // const resend = new Resend(emailApiKey);
-  // await resend.emails.send({
-  //   from: 'Ingressible <hello@ingressible.com>',
-  //   to: job.recipient_address,
-  //   subject: `New Ingressible consultation — ${job.payload.brand} — ${job.payload.public_reference}`,
-  //   html: renderInternalNotificationEmail(job.payload),
-  //   headers: { 'Idempotency-Key': idempotencyKey },
-  // });
-
-  return { transport: "real", messageId: "real-message-id", idempotencyKey };
-}

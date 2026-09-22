@@ -120,6 +120,7 @@ async function ensureReconciliation(
   return supabase.rpc("ensure_consultation_jobs", { p_submission_id: submissionId });
 }
 
+// @ts-ignore Deno.serve is available on Supabase Edge runtime (unstable on old local Deno)
 Deno.serve(async (req: Request): Promise<Response> => {
   const requestOrigin = req.headers.get("origin");
   const allowOrigin = resolveOrigin(requestOrigin);

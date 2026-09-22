@@ -30,6 +30,8 @@ export type ModelResult = {
   brief: IntakeBrief;
   responseId: string | null;
   usage: unknown;
+  provider?: string;
+  model?: string;
 };
 
 export type CallModel = (
@@ -166,6 +168,8 @@ export async function processClaimedJob(
   opts: {
     systemPrompt: string;
     model: string;
+    /** Provider provenance persisted with the result (e.g. "groq"). */
+    provider?: string;
     log?: (msg: string, extra?: string) => void;
   },
 ): Promise<ProcessOutcome> {
@@ -207,11 +211,15 @@ export async function processClaimedJob(
   let brief: IntakeBrief;
   let responseId: string | null = null;
   let usage: unknown = null;
+  let providerName: string = opts.provider ?? "unknown";
+  let modelName: string = opts.model;
   try {
     const out = await callModel(opts.systemPrompt, buildAgentInput(sub));
     brief = out.brief;
     responseId = out.responseId;
     usage = out.usage;
+    providerName = out.provider ?? providerName;
+    modelName = out.model ?? modelName;
   } catch (agentErr) {
     const code = (agentErr as Error & { code?: string }).code ?? "agent-error";
     const detail = (agentErr as Error & { detail?: string }).detail ?? null;
@@ -237,7 +245,8 @@ export async function processClaimedJob(
     analysis_json: {
       ...brief,
       _provenance: {
-        model: opts.model,
+        provider: providerName,
+        model: modelName,
         responseId,
         usage: usage ?? undefined,
         generatedAt: new Date().toISOString(),
@@ -248,7 +257,7 @@ export async function processClaimedJob(
     missing_information: brief.missingInformation,
     recommended_modules: brief.recommendedAssessmentModules,
     consultation_questions: brief.questionsForConsultation,
-    model: opts.model,
+    model: modelName,
     schema_version: 1,
     status: "processed",
     updated_at: new Date().toISOString(),
