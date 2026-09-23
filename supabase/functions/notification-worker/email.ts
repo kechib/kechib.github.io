@@ -89,7 +89,6 @@ export async function sendEmail(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${cfg.apiKey}`,
-        "Idempotency-Key": payload.idempotencyKey,
       },
       body: JSON.stringify({
         from: cfg.from,
@@ -132,3 +131,5 @@ export async function sendEmail(
   }
   return { messageId: id, provider: cfg.provider };
 }
+ 
+ 
