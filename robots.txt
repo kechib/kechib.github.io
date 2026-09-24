@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /design-system/
+
+Sitemap: https://ingressible.com/sitemap.xml

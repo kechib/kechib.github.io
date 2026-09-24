@@ -9,6 +9,8 @@ const corsHeaders = {
 };
 
 const ALLOWED_ORIGINS = [
+  "https://ingressible.com",
+  "https://www.ingressible.com",
   "https://www.kechiboniface.com",
   "https://kechiboniface.com",
   "https://kechib.github.io",

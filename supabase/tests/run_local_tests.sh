@@ -3,7 +3,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DENO="${DENO_BIN:-/Users/kechiboniface/.supabase/deno}"
-DB_CONTAINER="${DB_CONTAINER:-supabase_db_ingressiblellc}"
+DB_CONTAINER="${DB_CONTAINER:-supabase_db_ingressible}"
 
 echo "== 1/5 Deno classify tests =="
 "$DENO" run --allow-read "$ROOT/supabase/tests/classify_test.ts"
@@ -39,6 +39,11 @@ CREATE TABLE IF NOT EXISTS public.consultation_submissions (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
+-- Production now requires public_reference. Keep legacy fixtures compatible
+-- without weakening the real schema; the surrounding transaction rolls back.
+ALTER TABLE public.consultation_submissions
+    ALTER COLUMN public_reference SET DEFAULT
+    ('TEST-' || substr(md5(random()::text), 1, 12));
 CREATE TABLE IF NOT EXISTS public.intake_processing_jobs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     submission_id text NOT NULL,
@@ -83,6 +88,11 @@ CREATE TABLE IF NOT EXISTS public.consultation_submissions (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
+-- Production now requires public_reference. Keep legacy fixtures compatible
+-- without weakening the real schema; the surrounding transaction rolls back.
+ALTER TABLE public.consultation_submissions
+    ALTER COLUMN public_reference SET DEFAULT
+    ('TEST-' || substr(md5(random()::text), 1, 12));
 CREATE TABLE IF NOT EXISTS public.notification_jobs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     submission_id text NOT NULL,
@@ -106,11 +116,22 @@ CREATE TABLE IF NOT EXISTS public.notification_jobs (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS notification_jobs_unique_idx
     ON public.notification_jobs (submission_id, notification_type, recipient_type);
-ALTER TABLE public.notification_jobs
-    ADD CONSTRAINT notification_jobs_submission_id_fkey
-    FOREIGN KEY (submission_id)
-    REFERENCES public.consultation_submissions(submission_id)
-    ON DELETE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'notification_jobs_submission_id_fkey'
+          AND conrelid = 'public.notification_jobs'::regclass
+    ) THEN
+        ALTER TABLE public.notification_jobs
+            ADD CONSTRAINT notification_jobs_submission_id_fkey
+            FOREIGN KEY (submission_id)
+            REFERENCES public.consultation_submissions(submission_id)
+            ON DELETE CASCADE;
+    END IF;
+END
+$$;
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
         CREATE ROLE anon NOLOGIN;
