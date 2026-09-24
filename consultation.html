@@ -3,17 +3,116 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Start a Consultation — Ingressible</title>
-  <meta name="robots" content="noindex, follow">
-  <meta http-equiv="refresh" content="0; url=/consultation/">
-  <link rel="canonical" href="https://ingressible.com/consultation/">
+  <title>Start a Consultation — Ingressible LLC</title>
+  <meta name="description" content="Begin your Ingressible consultation. Tell us what beauty, retail, or digital experience you want to expand.">
+  <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/images/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+  <meta name="theme-color" content="#F4F0E8">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ingressible">
+  <meta property="og:title" content="Start a Consultation — Ingressible LLC">
+  <meta property="og:description" content="Begin your Ingressible consultation. Tell us what beauty, retail, or digital experience you want to expand.">
+  <meta property="og:url" content="https://kechiboniface.com/consultation">
+  <meta property="og:image" content="https://kechiboniface.com/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="800">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/tailwind.css">
+  <link rel="stylesheet" href="/css/consultation.css">
+  <script>document.documentElement.classList.remove("no-js");</script>
 </head>
 <body>
-  <main>
-    <h1>This page has moved</h1>
-    <p>The Ingressible consultation now lives at <a href="/consultation/">Start a Consultation</a>.</p>
-    <p><a href="/">Return to the Ingressible homepage</a></p>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="shell">
+      <div class="site-header__inner flex items-center justify-between gap-4 px-6 py-3 md:px-8">
+        <a class="brand" href="/index.html">
+          <span class="brand__mark" aria-hidden="true">I</span>
+          <span class="brand__name">Ingressible</span>
+        </a>
+
+        <nav class="site-nav" id="site-nav" aria-label="Main">
+          <button class="nav-close" type="button" aria-label="Close navigation">
+            <span class="nav-close__icon" aria-hidden="true">×</span>
+            <span class="nav-close__label">Close navigation</span>
+          </button>
+          <ul class="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8 justify-end md:gap-10">
+            <li><a href="/index.html">Home</a></li>
+            <li><a href="/learn.html">Learn About Me</a></li>
+            <li><a href="/consulting.html">Ingressible Consulting</a></li>
+            <li><a href="/experience.html">Experience</a></li>
+            <li><a href="/work.html">Selected Work</a></li>
+            <li><a href="/contact.html">Contact</a></li>
+          </ul>
+          <div class="site-nav__mobile-actions flex flex-col gap-4 pt-4 border-t border-line mt-4 md:hidden" aria-hidden="true">
+            <a class="btn btn--primary site-nav__mobile-cta w-full text-center" href="/consultation">Start a Consultation</a>
+            <div class="motion-control site-nav__mobile-motion w-full" aria-label="Motion preference">
+              <span class="motion-control__label" id="motion-label-mobile">Motion</span>
+              <div class="motion-control__group w-full flex justify-center gap-2" role="radiogroup" aria-labelledby="motion-label-mobile">
+                <button class="is-selected" type="button" role="radio" aria-checked="true" data-motion="vivid">Vivid</button>
+                <button type="button" role="radio" aria-checked="false" data-motion="reduced">No motion</button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div class="header-actions flex items-center gap-3 md:gap-4 hidden md:flex">
+          <a class="btn btn--primary header-actions__cta" href="/consultation">Start a Consultation</a>
+          <div class="motion-control header-actions__motion" aria-label="Motion preference">
+            <span class="motion-control__label" id="motion-label">Motion</span>
+            <div class="motion-control__group" role="radiogroup" aria-labelledby="motion-label">
+              <button class="is-selected" type="button" role="radio" aria-checked="true" data-motion="vivid">Vivid</button>
+              <button type="button" role="radio" aria-checked="false" data-motion="reduced">No motion</button>
+            </div>
+          </div>
+          <button class="nav-toggle md:hidden" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
+            <span class="nav-toggle__icon" aria-hidden="true">
+              <svg width="20" height="16" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 2.5H19M1 8H19M1 13.5H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span class="nav-toggle__label">Menu</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div id="intake-root" class="intake-root" aria-live="polite">
+      <!-- JavaScript renders the consultation intake here -->
+      <noscript>
+        <div class="intake-noscript">
+          <div class="shell">
+            <h1>Start a Consultation</h1>
+            <p>The Ingressible consultation intake requires JavaScript. Please enable JavaScript or <a href="/contact.html#consulting-form">contact us directly</a>.</p>
+          </div>
+        </div>
+      </noscript>
+    </div>
   </main>
-  <script>window.location.replace("/consultation/");</script>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <p class="site-footer__mark">Kechi Shellian Boniface &middot; Accessibility Specialist and Founder of Ingressible LLC</p>
+      <p class="site-footer__tag">Preserving the vision. Expanding the experience.</p>
+      <p class="site-footer__legal">
+        <a href="/index.html">Home</a> &middot; <a href="/learn.html">Learn About Me</a> &middot; <a href="/consulting.html">Ingressible Consulting</a> &middot;
+        <a href="/experience.html">Experience</a> &middot; <a href="/work.html">Selected Work</a> &middot; <a href="/contact.html">Contact</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="/js/vendor/motion.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/consultation.js"></script>
 </body>
 </html>

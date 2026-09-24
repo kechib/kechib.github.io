@@ -178,46 +178,6 @@
     });
   }
 
-  /* ---------- Business constellation depth ----------
-     Pointer movement changes only the presentation of the already-visible
-     composition. It is deliberately subtle, desktop-only, frame-throttled,
-     and immediately reset by either reduced-motion preference. */
-  var constellation = document.querySelector("[data-constellation]");
-  if (constellation && window.matchMedia) {
-    var hoverCapable = window.matchMedia("(hover: hover) and (pointer: fine)");
-    var constellationFrame = null;
-    var constellationX = 0;
-    var constellationY = 0;
-
-    function resetConstellation() {
-      if (constellationFrame) cancelAnimationFrame(constellationFrame);
-      constellationFrame = null;
-      constellation.style.setProperty("--tilt-x", "0deg");
-      constellation.style.setProperty("--tilt-y", "0deg");
-    }
-
-    function renderConstellationTilt() {
-      constellation.style.setProperty("--tilt-x", constellationX.toFixed(2) + "deg");
-      constellation.style.setProperty("--tilt-y", constellationY.toFixed(2) + "deg");
-      constellationFrame = null;
-    }
-
-    constellation.addEventListener("pointermove", function (evt) {
-      if (!shouldAnimate() || !hoverCapable.matches) {
-        resetConstellation();
-        return;
-      }
-      var bounds = constellation.getBoundingClientRect();
-      constellationX = ((evt.clientY - bounds.top) / bounds.height - 0.5) * -4;
-      constellationY = ((evt.clientX - bounds.left) / bounds.width - 0.5) * 5;
-      if (!constellationFrame) constellationFrame = requestAnimationFrame(renderConstellationTilt);
-    });
-    constellation.addEventListener("pointerleave", resetConstellation);
-    document.addEventListener("motionchanged", function (evt) {
-      if (evt.detail === "reduced") resetConstellation();
-    });
-  }
-
   /* ---------- Founder decorative accent ----------
      Static by default and in reduced mode; in vivid it gets a one-shot
      entrance plus a slow drift, paused whenever the section is offscreen.

@@ -1143,8 +1143,7 @@
     h += renderExperienceMap();
     h += "<div class=\"intake-consent\">" +
       "<label><input type=\"checkbox\" id=\"consent-check\"" + (state.consent ? " checked" : "") + "> " +
-      "I confirm that the information provided may be used by Ingressible to evaluate and prepare this consultation. " +
-      "<a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\">Read the Privacy Notice</a>.</label></div>";
+      "I confirm that the information provided may be used by Ingressible to evaluate and prepare this consultation.</label></div>";
     h += navButtons(true, "<button type=\"button\" class=\"btn--primary\" data-action=\"submit\">Submit Consultation</button>");
     return h;
   }
